@@ -1,104 +1,78 @@
 using System.Collections.Generic;
 using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace E
 {
     internal class GlobalInternal
     {
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSplashScreen)]
-        public static void InitializeRuntime()
+
+#if UNITY_EDITOR
+        [InitializeOnLoadMethod]
+        public static void InitializeEditor()
         {
-            Debug.Log("fuck me");
+            Debug.Log("InitializeEditor");
+            EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
+            EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+        }
+
+        private static void OnPlayModeStateChanged(PlayModeStateChange state)
+        {
+            switch (state)
+            {
+                case PlayModeStateChange.EnteredEditMode:
+                    Debug.Log("EnteredEditMode");
+                    break;
+                case PlayModeStateChange.EnteredPlayMode:
+                    Debug.Log("EnteredPlayMode");
+                    break;
+                case PlayModeStateChange.ExitingEditMode:
+                    Debug.Log("ExitingEditMode");
+                    break;
+                case PlayModeStateChange.ExitingPlayMode:
+                    Debug.Log("ExitingPlayMode");
+                    break;
+            }
             //Reload();
         }
 
-#if UNITY_EDITOR
-        [UnityEditor.InitializeOnLoadMethod]
-        public static void InitializeEditor()
+        [UnityEditor.Callbacks.DidReloadScripts]
+        public static void InitializeReloadScripts()
         {
-            Debug.Log("fuck");
-            //Reload();
+            Debug.Log("InitializeReloadScripts");
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        public static void InitializeRuntime()
+        {
+            Debug.Log("InitializeRuntime");
+        }
+
+#else
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        public static void InitializeRuntime()
+        {
+            Reload();
         }
 #endif
+
         private static List<GlobalBehaviour> all;
 
         public static void Reload()
         {
             if (all == null)
             {
-                all = new List<GlobalBehaviour>();
-                Behaviours.Initialize(all);
-            }
-        }
-    }
-
-    internal class Behaviours : MonoBehaviour
-    {
-        private static Behaviours instance;
-
-        private List<GlobalBehaviour> all;
-
-        private List<int> actived;
-
-        private int selectedIndex;
-
-        public static void Initialize(List<GlobalBehaviour> all)
-        {
-            CreateInstance();
-            instance.all = all;
-            instance.actived = new List<int>();
-            instance.selectedIndex = -1;
-        }
-
-        private static void CreateInstance()
-        {
-            if (instance == null)
-            {
-                instance = FindObjectOfType<Behaviours>();
-                if(instance == null)
-                {
-                    GameObject obj = new GameObject("Behaviours", typeof(Behaviours));
-                    DontDestroyOnLoad(obj);
-                }
+                Debug.Log("Fuck");
+                CollectAll();
+                Behaviours.Instance.Initialize(all);
             }
         }
 
-        private void Update()
+        private static void CollectAll()
         {
-            if (actived == null) return;
-            actived.Clear();
-            for (int i = 0; i < all.Count; i++)
-            {
-                GlobalBehaviour behaviour = all[i];
-                if (behaviour.IsActive())
-                {
-                    actived.Add(i);
-                }
-            }
-        }
-
-        private void OnDrawGizmos()
-        {
-            if (actived == null) return;
-            for (int i = 0; i < actived.Count; i++)
-            {
-                int index = actived[i];
-                GlobalBehaviour behaviour = all[index];
-                behaviour.OnDrawGizmos(selectedIndex == index);
-            }
-        }
-
-        private void OnDestroy()
-        {
-            actived.Clear();
-            actived = null;
-            for (int i = 0; i < all.Count; i++)
-            {
-                GlobalBehaviour behaviour = all[i];
-                behaviour.Dispose();
-            }
-            all.Clear();
-            all = null;
+            all = new List<GlobalBehaviour>();
         }
     }
 }
