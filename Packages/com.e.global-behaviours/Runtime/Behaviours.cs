@@ -3,13 +3,11 @@ using UnityEngine;
 
 namespace E
 {
-    [Singleton(Name = "Behaviours", Automatic = true, Persistent = true)]
+    [Singleton(Name = "Behaviours", Persistent = true)]
     [AddComponentMenu("")]
     [ExecuteAlways]
-    public class Behaviours : MonoBehaviour, ISingleton
+    public class Behaviours : Singleton<Behaviours>
     {
-        public static Behaviours Instance => Singleton<Behaviours>.Instance;
-
         private List<GlobalBehaviour> all;
 
         private List<int> enableList;
@@ -20,15 +18,14 @@ namespace E
 
         private int selectedIndex;
 
-        private void Awake()
+        protected override void Create()
         {
-            Singleton<Behaviours>.Awake(this);
+
         }
 
-        private void OnDestroy()
+        protected override void Destroy()
         {
             ReleaseLists();
-            Singleton<Behaviours>.OnDestroy(this);
         }
 
         public void Initialize(List<GlobalBehaviour> all)

@@ -12,7 +12,6 @@ namespace E
         }
 
         public bool Persistent { get; set; }
-        public bool Automatic { get; set; }
         public HideFlags HideFlags { get; set; }
         public string Name { get; set; }
     }

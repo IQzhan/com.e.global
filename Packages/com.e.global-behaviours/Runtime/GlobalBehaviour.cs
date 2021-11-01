@@ -3,16 +3,6 @@ using UnityEngine;
 
 namespace E
 {
-    public abstract class GlobalBehaviour<T> : GlobalBehaviour
-        where T : GlobalBehaviour<T>
-    {
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSplashScreen)]
-        private static void Load()
-        {
-            
-        }
-    }
-
     public abstract partial class GlobalBehaviour : IDisposable
     {
         private bool m_LastActive;
