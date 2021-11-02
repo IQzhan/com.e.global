@@ -1,7 +1,7 @@
 {
   "dependencies": {
-    "com.e.global-behaviours": {
-      "version": "file:com.e.global-behaviours",
+    "com.e.global": {
+      "version": "file:com.e.global",
       "depth": 0,
       "source": "embedded",
       "dependencies": {}

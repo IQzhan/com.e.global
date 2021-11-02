@@ -1,5 +1,5 @@
 {
-    "name": "E.GlobalBehaviours.Runtime",
+    "name": "E.Global.Runtime",
     "rootNamespace": "E",
     "references": [],
     "includePlatforms": [],

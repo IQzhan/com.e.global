@@ -1,5 +1,4 @@
 using System;
-using UnityEngine;
 
 namespace E
 {
@@ -9,18 +8,19 @@ namespace E
 
         private bool m_CurrActive;
 
-        internal void Setup()
-        {
-            m_LastActive = m_CurrActive = false;
-            Initialize();
-        }
-
         internal void Check(out bool enableState, out bool updateState, out bool disableState)
         {
             m_LastActive = m_CurrActive;
             updateState = m_CurrActive = IsActive();
             enableState = !m_LastActive && m_CurrActive;
             disableState = m_LastActive && !m_CurrActive;
+        }
+
+        // Add/初始化时立即执行
+        internal void ExecuteAwake()
+        {
+            m_LastActive = m_CurrActive = false;
+            Awake();
         }
 
         internal void ExecuteEnable()
@@ -43,22 +43,15 @@ namespace E
             if (m_LastActive) OnDisable();
         }
 
-        internal void ExecuteDrawGizmos(bool selected)
-        {
-            OnDrawGizmos(selected);
-        }
-
-        protected abstract void Initialize();
-
         protected abstract bool IsActive();
+
+        protected abstract void Awake();
 
         protected virtual void OnEnable() { }
 
         protected virtual void Update() { }
 
         protected virtual void OnDisable() { }
-
-        protected virtual void OnDrawGizmos(bool selected) { }
 
         #region Dispose
 
@@ -74,6 +67,7 @@ namespace E
                     DisposeManaged();
                 }
                 DisposeUnmanaged();
+                //立刻从数据中移除
                 m_DisposedValue = true;
             }
         }

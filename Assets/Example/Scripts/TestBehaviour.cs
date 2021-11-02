@@ -7,15 +7,16 @@ public class TestBehaviour : GlobalBehaviour
 {
     protected override void DisposeManaged()
     {
+
     }
 
     protected override void DisposeUnmanaged()
     {
     }
 
-    protected override void Initialize()
+    protected override void Awake()
     {
-        
+
     }
 
     protected override bool IsActive()
