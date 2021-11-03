@@ -1,92 +1,89 @@
-using System;
+using UnityEngine;
 
 namespace E
 {
-    public abstract partial class GlobalBehaviour : IDisposable
+    public abstract partial class GlobalBehaviour : ScriptableObject
     {
+        private bool m_Initialized;
+
         private bool m_LastActive;
 
         private bool m_CurrActive;
 
-        internal void Check(out bool enableState, out bool updateState, out bool disableState)
+        [SerializeField]
+        private bool m_ExecuteInEditor;
+
+        public bool ExecuteInEditor
+        { get { return m_ExecuteInEditor; } }
+
+        internal void Check(
+            out bool awakeState,
+            out bool enableState,
+            out bool updateState,
+            out bool disableState)
         {
             m_LastActive = m_CurrActive;
-            updateState = m_CurrActive = IsActive();
+            awakeState = !m_Initialized;
+            updateState = m_CurrActive = Actived;
             enableState = !m_LastActive && m_CurrActive;
             disableState = m_LastActive && !m_CurrActive;
         }
 
-        // Add/初始化时立即执行
         internal void ExecuteAwake()
         {
             m_LastActive = m_CurrActive = false;
-            Awake();
+            AwakeCallback();
+            m_Initialized = true;
         }
 
         internal void ExecuteEnable()
         {
-            OnEnable();
+            EnableCallback();
         }
 
         internal void ExecuteUpdate()
         {
-            Update();
+            UpdateCallback();
         }
 
         internal void ExecuteDisable()
         {
-            OnDisable();
+            DisableCallback();
         }
 
         internal void CheckExecuteDisable()
         {
-            if (m_LastActive) OnDisable();
+            if (m_LastActive) DisableCallback();
+        }
+
+        internal void ExecuteDestroy()
+        {
+            m_Initialized = false;
+            DestroyCallback();
+            m_LastActive = m_CurrActive = false;
+        }
+
+        public bool Actived
+        {
+            get
+            {
+                return
+                    ((!Application.isPlaying && m_ExecuteInEditor) ||
+                    Application.isPlaying) &&
+                    m_Initialized && IsActive();
+            }
         }
 
         protected abstract bool IsActive();
 
-        protected abstract void Awake();
+        protected abstract void AwakeCallback();
 
-        protected virtual void OnEnable() { }
+        protected virtual void EnableCallback() { }
 
-        protected virtual void Update() { }
+        protected virtual void UpdateCallback() { }
 
-        protected virtual void OnDisable() { }
+        protected virtual void DisableCallback() { }
 
-        #region Dispose
-
-        private bool m_DisposedValue;
-
-        protected void Dispose(bool disposing)
-        {
-            if (!m_DisposedValue)
-            {
-                if (disposing)
-                {
-                    m_LastActive = m_CurrActive = false;
-                    DisposeManaged();
-                }
-                DisposeUnmanaged();
-                //立刻从数据中移除
-                m_DisposedValue = true;
-            }
-        }
-
-        protected abstract void DisposeManaged();
-
-        protected abstract void DisposeUnmanaged();
-
-        ~GlobalBehaviour()
-        {
-            Dispose(disposing: false);
-        }
-
-        public void Dispose()
-        {
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
-        }
-
-        #endregion
+        protected abstract void DestroyCallback();
     }
 }

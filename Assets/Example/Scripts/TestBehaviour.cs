@@ -5,16 +5,12 @@ using UnityEngine;
 
 public class TestBehaviour : GlobalBehaviour
 {
-    protected override void DisposeManaged()
+    protected override void DestroyCallback()
     {
-
+        
     }
 
-    protected override void DisposeUnmanaged()
-    {
-    }
-
-    protected override void Awake()
+    protected override void AwakeCallback()
     {
 
     }

@@ -29,30 +29,58 @@ namespace E
         private static T m_Instance;
 
         public static T Instance
+        { get { return CreateInstance(); } }
+
+        public static T CreateInstance()
+        {
+            if (Application.isPlaying)
+            {
+                if (m_Instance == null)
+                {
+                    lock (m_Lock)
+                    {
+                        if (m_Instance == null)
+                        {
+                            FindInstance();
+                        }
+                    }
+                }
+            }
+            else
+            {
+                lock (m_Lock)
+                {
+                    FindInstance();
+                }
+            }
+            return m_Instance;
+        }
+
+        public static bool Exists
         {
             get
             {
                 if (Application.isPlaying)
                 {
-                    if (m_Instance == null)
-                    {
-                        lock (m_Lock)
-                        {
-                            if (m_Instance == null)
-                            {
-                                FindInstance();
-                            }
-                        }
-                    }
+                    return m_Instance != null;
                 }
                 else
                 {
                     lock (m_Lock)
                     {
-                        FindInstance();
+                        T[] objs = FindObjectsOfType<T>();
+                        return objs.Length == 1;
                     }
                 }
-                return m_Instance;
+            }
+        }
+
+        public static void DestroyInstance()
+        {
+            T[] objs = FindObjectsOfType<T>();
+            for (int i = 0; i < objs.Length; i++)
+            {
+                SafeDestroy(objs[i]);
             }
         }
 
@@ -88,7 +116,8 @@ namespace E
             }
             else
             {
-                throw new System.Exception("Instance of " + InstanceName + " can not be more then one.");
+                // How to find the correct one?
+                throw new System.Exception($"Instance of '{InstanceName}' can not be more then one.");
             }
         }
 
@@ -116,7 +145,10 @@ namespace E
                     m_Instance = thisOne;
                     KeepAlive(thisOne);
                     hideFlags = m_Attribute.HideFlags;
-                    Debug.Log(InstanceName + " " + Platform + " Loaded");
+                    if (Debug.isDebugBuild)
+                    {
+                        Debug.Log($"{InstanceName} Loaded in {PlatformMode}.");
+                    }
                 }
             }
         }
@@ -133,16 +165,24 @@ namespace E
             }
         }
 
-        private static string InstanceName
-        {
-            get { return m_Attribute.Name; }
-        }
-
-        private string Platform
+        public static string InstanceName
         {
             get
             {
-                return Application.isPlaying ? "Playing" : "Editor";
+                if (m_Attribute != null &&
+                    !string.IsNullOrWhiteSpace(m_Attribute.Name))
+                {
+                    return m_Attribute.Name;
+                }
+                return typeof(T).Name;
+            }
+        }
+
+        private string PlatformMode
+        {
+            get
+            {
+                return Application.isPlaying ? "playing mode" : "editor mode";
             }
         }
 
