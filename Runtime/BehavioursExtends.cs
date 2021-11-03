@@ -4,11 +4,11 @@
     {
         private void OnDrawGizmos()
         {
-            if (!m_Initialized) return;
-            for (int i = 0; i < m_ActiveList.Count; i++)
+            if (!OrdersReady(out GlobalBehaviour[] orders)) return;
+            for (int i = 0; i < m_ActiveQueue.Count; i++)
             {
-                int index = m_ActiveList[i];
-                GlobalBehaviour behaviour = all[index];
+                int index = m_ActiveQueue[i];
+                GlobalBehaviour behaviour = orders[index];
                 behaviour.ExecuteDrawGizmos(m_SelectedIndex == index);
             }
         }

@@ -2,11 +2,11 @@
 {
     public partial class GlobalBehaviour
     {
-        internal void ExecuteDrawGizmos(bool selected)
+        internal void ExecuteDrawGizmos(in bool selected)
         {
-            OnDrawGizmos(selected);
+            DrawGizmosCallback(selected);
         }
 
-        protected virtual void OnDrawGizmos(bool selected) { }
+        protected virtual void DrawGizmosCallback(in bool selected) { }
     }
 }
