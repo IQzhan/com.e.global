@@ -5,6 +5,11 @@ using UnityEngine;
 
 public class TestBehaviour : GlobalBehaviour
 {
+    protected override void UpdateCallback()
+    {
+        
+    }
+
     protected override void DestroyCallback()
     {
         

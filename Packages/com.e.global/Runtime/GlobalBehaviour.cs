@@ -10,11 +10,16 @@ namespace E
 
         private bool m_CurrActive;
 
+        internal bool actualDestroy;
+
         [SerializeField]
         private bool m_ExecuteInEditor;
 
         public bool ExecuteInEditor
         { get { return m_ExecuteInEditor; } }
+
+        public bool Initialized
+        { get { return m_Initialized; } }
 
         internal void Check(
             out bool awakeState,
@@ -31,36 +36,58 @@ namespace E
 
         internal void ExecuteAwake()
         {
-            m_LastActive = m_CurrActive = false;
-            AwakeCallback();
-            m_Initialized = true;
+            if (!m_Initialized)
+            {
+                m_LastActive = m_CurrActive = false;
+                AwakeCallback();
+                m_Initialized = true;
+            }
         }
 
         internal void ExecuteEnable()
         {
-            EnableCallback();
+            if (m_Initialized)
+            {
+                EnableCallback();
+            }
         }
 
         internal void ExecuteUpdate()
         {
-            UpdateCallback();
+            if (m_Initialized)
+            {
+                UpdateCallback();
+            }
         }
 
         internal void ExecuteDisable()
         {
-            DisableCallback();
-        }
-
-        internal void CheckExecuteDisable()
-        {
-            if (m_LastActive) DisableCallback();
+            if (m_Initialized)
+            {
+                DisableCallback();
+            }
         }
 
         internal void ExecuteDestroy()
         {
-            m_Initialized = false;
-            DestroyCallback();
-            m_LastActive = m_CurrActive = false;
+            if (m_Initialized)
+            {
+                if (m_LastActive) DisableCallback();
+                m_Initialized = false;
+                DestroyCallback();
+                m_LastActive = m_CurrActive = false;
+                if (actualDestroy)
+                {
+                    if (Application.isPlaying)
+                    {
+                        Destroy(this);
+                    }
+                    else
+                    {
+                        DestroyImmediate(this);
+                    }
+                }
+            }
         }
 
         public bool Actived

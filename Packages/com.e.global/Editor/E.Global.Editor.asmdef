@@ -1,7 +1,9 @@
 {
     "name": "E.Global.Editor",
     "rootNamespace": "E.Editor",
-    "references": [],
+    "references": [
+        "E.Global.Runtime"
+    ],
     "includePlatforms": [
         "Editor"
     ],
