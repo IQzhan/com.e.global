@@ -4,9 +4,9 @@ using UnityEngine;
 namespace E
 {
     [Singleton(Name = "Behaviours", Persistent = true)]
-    [AddComponentMenu("")]
+    [AddComponentMenu("Global/Behaviours")]
     [ExecuteAlways]
-    internal partial class Behaviours : Singleton<Behaviours>
+    public sealed partial class Behaviours : Singleton<Behaviours>
     {
         private bool m_QueueInitialized;
 
@@ -18,17 +18,36 @@ namespace E
 
         private List<int> m_DisableQueue;
 
-        private List<int> m_DestroyQueue;
+        private List<GlobalBehaviour> m_DestroyQueue;
 
         private int m_SelectedIndex;
 
-        [SerializeField]
+        [SerializeField, HideInInspector]
         private GlobalBehaviourOrders m_Settings;
 
-        private GlobalBehaviour[] Orders
-        { get { return m_Settings?.Orders; } }
+        private List<GlobalBehaviour> Orders
+        { get { return m_Settings != null ? m_Settings.Orders : null; } }
 
-        // ‘⁄±‡“Î∫Û÷¥––
+        internal GlobalBehaviourOrders Settings
+        {
+            get
+            {
+                return m_Settings;
+            }
+            set
+            {
+                GlobalBehaviourOrders temp = m_Settings;
+                m_Settings = value;
+                if (temp != null && value != temp)
+                {
+                    temp.CheckAllToDestroyQueue();
+                }
+            }
+        }
+
+#if UNITY_EDITOR
+        [UnityEditor.Callbacks.DidReloadScripts]
+#endif
         private static void RecreateInstance()
         {
             if (Exists)
@@ -39,9 +58,14 @@ namespace E
             }
         }
 
-        public void ConfigurOrders(in GlobalBehaviourOrders settings)
+        internal bool IsPlaying(in GlobalBehaviourOrders settings)
         {
-            m_Settings = settings;
+            return settings == m_Settings;
+        }
+
+        internal List<GlobalBehaviour> GetDestroyQueue()
+        {
+            return m_DestroyQueue;
         }
 
         protected override void Create()
@@ -52,20 +76,24 @@ namespace E
 
         private void Update()
         {
-            if (!OrdersReady(out GlobalBehaviour[] orders)) return;
+            if (!OrdersReady(out List<GlobalBehaviour> orders)) return;
             CheckOrders(orders);
             ExecuteOrders(orders);
+            ExecuteDestroy();
         }
 
         protected override void Destroy()
         {
-            if (!OrdersReady(out GlobalBehaviour[] orders)) return;
-            ExecuteDestroy(orders);
+            if (m_Settings != null)
+            {
+                m_Settings.CheckAllToDestroyQueue();
+            }
+            ExecuteDestroy();
             ReleaseQueues();
             m_SelectedIndex = -1;
         }
 
-        private bool OrdersReady(out GlobalBehaviour[] orders)
+        private bool OrdersReady(out List<GlobalBehaviour> orders)
         {
             orders = Orders;
             return m_QueueInitialized && (orders != null);
@@ -77,7 +105,7 @@ namespace E
             m_ActiveQueue = new List<int>();
             m_EnableQueue = new List<int>();
             m_DisableQueue = new List<int>();
-            m_DestroyQueue = new List<int>();
+            m_DestroyQueue = new List<GlobalBehaviour>();
             m_QueueInitialized = true;
         }
 
@@ -91,7 +119,7 @@ namespace E
             m_QueueInitialized = false;
         }
 
-        private void ReleaseList(ref List<int> list)
+        private void ReleaseList<T>(ref List<T> list)
         {
             if (list != null)
             {
@@ -100,10 +128,13 @@ namespace E
             }
         }
 
-        private void CheckOrders(in GlobalBehaviour[] orders)
+        private void CheckOrders(in List<GlobalBehaviour> orders)
         {
-            ClearQueues();
-            for (int i = 0; i < orders.Length; i++)
+            m_AwakeQueue.Clear();
+            m_EnableQueue.Clear();
+            m_ActiveQueue.Clear();
+            m_DisableQueue.Clear();
+            for (int i = 0; i < orders.Count; i++)
             {
                 GlobalBehaviour behaviour = orders[i];
                 if (behaviour == null) continue;
@@ -119,35 +150,26 @@ namespace E
             }
         }
 
-        private void ClearQueues()
-        {
-            m_AwakeQueue.Clear();
-            m_EnableQueue.Clear();
-            m_ActiveQueue.Clear();
-            m_DisableQueue.Clear();
-            m_DestroyQueue.Clear();
-        }
-
-        private void ExecuteOrders(in GlobalBehaviour[] orders)
+        private void ExecuteOrders(in List<GlobalBehaviour> orders)
         {
             ExecuteAwake(orders);
             ExecuteEnable(orders);
             ExecuteUpdate(orders);
             ExecuteDisable(orders);
-            ExecuteDestroy(orders);
         }
 
-        private void ExecuteAwake(in GlobalBehaviour[] orders)
+        private void ExecuteAwake(in List<GlobalBehaviour> orders)
         {
-            for (int i = 0; i < orders.Length; i++)
+            for (int i = 0; i < orders.Count; i++)
             {
                 int index = m_AwakeQueue[i];
                 GlobalBehaviour behaviour = orders[index];
                 behaviour.ExecuteAwake();
             }
+            m_AwakeQueue.Clear();
         }
 
-        private void ExecuteEnable(in GlobalBehaviour[] orders)
+        private void ExecuteEnable(in List<GlobalBehaviour> orders)
         {
             for (int i = 0; i < m_EnableQueue.Count; i++)
             {
@@ -155,9 +177,10 @@ namespace E
                 GlobalBehaviour behaviour = orders[index];
                 behaviour.ExecuteEnable();
             }
+            m_EnableQueue.Clear();
         }
 
-        private void ExecuteUpdate(in GlobalBehaviour[] orders)
+        private void ExecuteUpdate(in List<GlobalBehaviour> orders)
         {
             for (int i = 0; i < m_ActiveQueue.Count; i++)
             {
@@ -165,9 +188,10 @@ namespace E
                 GlobalBehaviour behaviour = orders[index];
                 behaviour.ExecuteUpdate();
             }
+            m_ActiveQueue.Clear();
         }
 
-        private void ExecuteDisable(in GlobalBehaviour[] orders)
+        private void ExecuteDisable(in List<GlobalBehaviour> orders)
         {
             for (int i = 0; i < m_DisableQueue.Count; i++)
             {
@@ -175,17 +199,17 @@ namespace E
                 GlobalBehaviour behaviour = orders[index];
                 behaviour.ExecuteDisable();
             }
+            m_DisableQueue.Clear();
         }
 
-        private void ExecuteDestroy(in GlobalBehaviour[] orders)
+        private void ExecuteDestroy()
         {
-            for (int i = 0; i < orders.Length; i++)
+            for (int i = 0; i < m_DestroyQueue.Count; i++)
             {
-                int index = m_DestroyQueue[i];
-                GlobalBehaviour behaviour = orders[index];
-                behaviour.CheckExecuteDisable();
+                GlobalBehaviour behaviour = m_DestroyQueue[i];
                 behaviour.ExecuteDestroy();
             }
+            m_DestroyQueue.Clear();
         }
     }
 }

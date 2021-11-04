@@ -33,24 +33,14 @@ namespace E
 
         public static T CreateInstance()
         {
-            if (Application.isPlaying)
-            {
-                if (m_Instance == null)
-                {
-                    lock (m_Lock)
-                    {
-                        if (m_Instance == null)
-                        {
-                            FindInstance();
-                        }
-                    }
-                }
-            }
-            else
+            if (m_Instance == null)
             {
                 lock (m_Lock)
                 {
-                    FindInstance();
+                    if (m_Instance == null)
+                    {
+                        FindInstance();
+                    }
                 }
             }
             return m_Instance;
@@ -66,11 +56,18 @@ namespace E
                 }
                 else
                 {
-                    lock (m_Lock)
+                    if(m_Instance == null)
                     {
-                        T[] objs = FindObjectsOfType<T>();
-                        return objs.Length == 1;
+                        lock (m_Lock)
+                        {
+                            T[] objs = FindObjectsOfType<T>();
+                            if(objs.Length == 1)
+                            {
+                                m_Instance = objs[0];
+                            }
+                        }
                     }
+                    return m_Instance != null;
                 }
             }
         }
