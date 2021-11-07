@@ -6,11 +6,11 @@ namespace E
     {
         private void OnDrawGizmos()
         {
-            if (!OrdersReady(out List<GlobalBehaviour> orders)) return;
+            if (!OrdersReady(out List<GlobalBehaviour_0> orders)) return;
             for (int i = 0; i < m_ActiveQueue.Count; i++)
             {
                 int index = m_ActiveQueue[i];
-                GlobalBehaviour behaviour = orders[index];
+                GlobalBehaviour_0 behaviour = orders[index];
                 behaviour.ExecuteDrawGizmos(m_SelectedIndex == index);
             }
         }
