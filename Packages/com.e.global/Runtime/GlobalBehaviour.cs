@@ -1,116 +1,85 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace E
 {
-    public abstract partial class GlobalBehaviour : ScriptableObject
+    public abstract partial class GlobalBehaviour
     {
-        private bool m_Initialized;
-
-        private bool m_LastActive;
-
-        private bool m_CurrActive;
-
-        internal bool actualDestroy;
-
-        [SerializeField]
-        private bool m_ExecuteInEditor;
-
-        public bool ExecuteInEditor
-        { get { return m_ExecuteInEditor; } }
-
-        public bool Initialized
-        { get { return m_Initialized; } }
-
-        internal void Check(
-            out bool awakeState,
-            out bool enableState,
-            out bool updateState,
-            out bool disableState)
+        public void Init(in int id, in bool isExecuteInEditorMode)
         {
-            m_LastActive = m_CurrActive;
-            awakeState = !m_Initialized;
-            updateState = m_CurrActive = Actived;
-            enableState = !m_LastActive && m_CurrActive;
-            disableState = m_LastActive && !m_CurrActive;
+            ID = id;
+            IsExecuteInEditorMode = isExecuteInEditorMode;
         }
 
-        internal void ExecuteAwake()
+        public int ID { get; private set; }
+
+        public bool IsExecuteInEditorMode { get; private set; }
+
+        public bool IsAlive { get => Application.isPlaying || IsExecuteInEditorMode; }
+
+        public bool IsAwaked { get; private set; }
+
+        internal bool IsLastActived { get; private set; }
+
+        public bool IsActived { get => IsAwaked && IsEnabled; }
+
+        protected abstract bool IsEnabled { get; }
+
+        protected virtual void OnAwake() { }
+
+        protected virtual void OnEnable() { }
+
+        protected virtual void OnUpdate() { }
+
+        protected virtual void OnDisable() { }
+
+        protected virtual void OnDestroy() { }
+
+        internal void InernalAwake()
         {
-            if (!m_Initialized)
+            if (IsAlive && !IsAwaked)
             {
-                m_LastActive = m_CurrActive = false;
-                AwakeCallback();
-                m_Initialized = true;
+                OnAwake();
+                IsAwaked = true;
             }
         }
 
-        internal void ExecuteEnable()
+        internal void InernalEnable()
         {
-            if (m_Initialized)
+            if (!IsLastActived && IsActived)
             {
-                EnableCallback();
+                OnEnable();
+                IsLastActived = true;
             }
         }
 
-        internal void ExecuteUpdate()
+        internal void InternalUpdate()
         {
-            if (m_Initialized)
+            if (IsActived)
             {
-                UpdateCallback();
+                OnUpdate();
+                IsLastActived = true;
             }
         }
 
-        internal void ExecuteDisable()
+        internal void InternalDisable()
         {
-            if (m_Initialized)
+            if (IsLastActived && !IsActived)
             {
-                DisableCallback();
+                OnDisable();
+                IsLastActived = false;
             }
         }
 
-        internal void ExecuteDestroy()
+        internal void InternalDestroy()
         {
-            if (m_Initialized)
+            if (IsAwaked)
             {
-                if (m_LastActive) DisableCallback();
-                m_Initialized = false;
-                DestroyCallback();
-                m_LastActive = m_CurrActive = false;
-                if (actualDestroy)
+                if (IsLastActived)
                 {
-                    if (Application.isPlaying)
-                    {
-                        Destroy(this);
-                    }
-                    else
-                    {
-                        DestroyImmediate(this);
-                    }
+                    OnDisable();
                 }
+                OnDestroy();
             }
         }
-
-        public bool Actived
-        {
-            get
-            {
-                return
-                    ((!Application.isPlaying && m_ExecuteInEditor) ||
-                    Application.isPlaying) &&
-                    m_Initialized && IsActive();
-            }
-        }
-
-        protected abstract bool IsActive();
-
-        protected abstract void AwakeCallback();
-
-        protected virtual void EnableCallback() { }
-
-        protected virtual void UpdateCallback() { }
-
-        protected virtual void DisableCallback() { }
-
-        protected abstract void DestroyCallback();
     }
 }

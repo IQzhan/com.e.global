@@ -2,7 +2,7 @@ using E;
 using UnityEngine;
 
 [ExecuteAlways]
-public class TestBehaviour : GlobalBehaviour
+public class TestBehaviour : GlobalBehaviour_0
 {
     protected override void UpdateCallback()
     {

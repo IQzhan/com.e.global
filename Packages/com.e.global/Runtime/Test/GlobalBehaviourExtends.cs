@@ -1,6 +1,6 @@
 ﻿namespace E
 {
-    public partial class GlobalBehaviour
+    public partial class GlobalBehaviour_0
     {
         internal void ExecuteDrawGizmos(in bool selected)
         {
