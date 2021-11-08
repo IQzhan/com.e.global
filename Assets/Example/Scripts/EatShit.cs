@@ -1,25 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace E
 {
-    public partial class EatShit : MonoBehaviour
+    public partial class EatShit : GlobalBehaviour
     {
-        private void Update()
-        {
-            
-        }
-    }
+        protected override bool IsEnabled => true;
 
-    public static class ExtendEatShit
-    {
-        public static void Update(this EatShit eatShit)
+        protected override void OnAwake()
         {
-            Debug.Log("eatshit");
+            Debug.Log("Awake");
         }
     }
 }

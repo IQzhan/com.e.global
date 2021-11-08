@@ -1,24 +1,19 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 namespace E
 {
     public abstract partial class GlobalBehaviour
     {
-        public void Init(in int id, in bool isExecuteInEditorMode)
-        {
-            ID = id;
-            IsExecuteInEditorMode = isExecuteInEditorMode;
-        }
+        public int ID { get; internal set; } = -1;
 
-        public int ID { get; private set; }
-
-        public bool IsExecuteInEditorMode { get; private set; }
+        public bool IsExecuteInEditorMode { get; internal set; } = false;
 
         public bool IsAlive { get => Application.isPlaying || IsExecuteInEditorMode; }
 
-        public bool IsAwaked { get; private set; }
+        public bool IsAwaked { get; private set; } = false;
 
-        internal bool IsLastActived { get; private set; }
+        internal bool IsLastActived { get; private set; } = false;
 
         public bool IsActived { get => IsAwaked && IsEnabled; }
 
@@ -36,10 +31,20 @@ namespace E
 
         internal void InernalAwake()
         {
-            if (IsAlive && !IsAwaked)
+            if (IsAlive && !IsAwaked && !IsLastActived)
             {
-                OnAwake();
-                IsAwaked = true;
+                try
+                {
+                    OnAwake();
+                    IsAwaked = true;
+                }
+                catch (Exception e)
+                {
+                    if (Debug.isDebugBuild)
+                    {
+                        Debug.LogException(e);
+                    }
+                }
             }
         }
 
@@ -47,8 +52,18 @@ namespace E
         {
             if (!IsLastActived && IsActived)
             {
-                OnEnable();
-                IsLastActived = true;
+                try
+                {
+                    OnEnable();
+                    IsLastActived = true;
+                }
+                catch (Exception e)
+                {
+                    if (Debug.isDebugBuild)
+                    {
+                        Debug.LogException(e);
+                    }
+                }
             }
         }
 
@@ -56,8 +71,18 @@ namespace E
         {
             if (IsActived)
             {
-                OnUpdate();
-                IsLastActived = true;
+                try
+                {
+                    OnUpdate();
+                    IsLastActived = true;
+                }
+                catch (Exception e)
+                {
+                    if (Debug.isDebugBuild)
+                    {
+                        Debug.LogException(e);
+                    }
+                }
             }
         }
 
@@ -65,8 +90,18 @@ namespace E
         {
             if (IsLastActived && !IsActived)
             {
-                OnDisable();
-                IsLastActived = false;
+                try
+                {
+                    OnDisable();
+                    IsLastActived = false;
+                }
+                catch (Exception e)
+                {
+                    if (Debug.isDebugBuild)
+                    {
+                        Debug.LogException(e);
+                    }
+                }
             }
         }
 
@@ -76,9 +111,31 @@ namespace E
             {
                 if (IsLastActived)
                 {
-                    OnDisable();
+                    try
+                    {
+                        OnDisable();
+                        IsLastActived = false;
+                    }
+                    catch (Exception e)
+                    {
+                        if (Debug.isDebugBuild)
+                        {
+                            Debug.LogException(e);
+                        }
+                    }
                 }
-                OnDestroy();
+                try
+                {
+                    OnDestroy();
+                    IsAwaked = false;
+                }
+                catch (Exception e)
+                {
+                    if (Debug.isDebugBuild)
+                    {
+                        Debug.LogException(e);
+                    }
+                }
             }
         }
     }
