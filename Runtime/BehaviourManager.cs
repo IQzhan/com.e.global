@@ -27,7 +27,9 @@ namespace E
 
         public BehaviourUpdater MonoBehaviour { get => BehaviourUpdater.Instance; }
 
-        private BehaviourCollection collection;
+        private ulong m_IDCount;
+
+        private BehaviourCollection m_Collection;
 
         private float m_LastTime;
 
@@ -38,24 +40,30 @@ namespace E
 
         private void Initialize()
         {
-            collection = new BehaviourCollection();
+            m_Collection = new BehaviourCollection();
             IsReady = true;
+        }
+
+        private ulong CreateID()
+        {
+            return ++m_IDCount;
         }
 
         public GlobalBehaviour CreateInstance(in Type type)
         {
             //collection.Add();
+            ulong id = CreateID();
             return null;
         }
 
         public GlobalBehaviour GetInstance(in Type type)
         {
-            return collection.Get(type);
+            return m_Collection.Get(type);
         }
 
         public GlobalBehaviour[] GetInstances(in Type type)
         {
-            return collection.Gets(type);
+            return m_Collection.Gets(type);
         }
 
         public void DestroyInstance(GlobalBehaviour behaviour)
