@@ -10,17 +10,8 @@ namespace E
             this.type = type;
             object[] attris = type.GetCustomAttributes(typeof(ExecuteInEditMode), true);
             if (attris.Length == 0)
-            {
-                attris = type.GetCustomAttributes(typeof(ExecuteAlways), true);
-            }
-            if (attris.Length == 1)
-            {
-                isAllowInEditorMode = true;
-            }
-            else
-            {
-                isAllowInEditorMode = false;
-            }
+            { attris = type.GetCustomAttributes(typeof(ExecuteAlways), true); }
+            isExecuteInEditorMode = attris.Length > 0;
             attris = type.GetCustomAttributes(typeof(AutoInstantiateAttribute), true);
             if (attris.Length == 1)
             {
@@ -36,10 +27,18 @@ namespace E
 
         public Type type;
 
-        public bool isAllowInEditorMode;
+        public bool isExecuteInEditorMode;
 
         public bool isAutoInstantiation;
 
         public int order;
+
+        public override string ToString()
+        {
+            return $"type: {type},{Environment.NewLine}" +
+                $"isAllowInEditorMode: {isExecuteInEditorMode},{Environment.NewLine}" +
+                $"isAutoInstantiation: {isAutoInstantiation},{Environment.NewLine}" +
+                $"order: {order}";
+        }
     }
 }
