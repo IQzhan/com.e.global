@@ -19,5 +19,12 @@ namespace E
         {
             BehaviourManager.Instance.LateUpdate();
         }
+
+#if UNITY_EDITOR
+        private void OnDrawGizmos()
+        {
+            BehaviourManager.Instance.OnDrawGizmos();
+        }
+#endif
     }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using UnityEngine.Profiling;
 
 namespace E
 {
@@ -10,7 +11,11 @@ namespace E
     [AutoInstantiate(5)]
     public class HaHa : SuckDick<HaHa>
     {
-
+        protected override void OnAwake()
+        {
+            UnityEngine.Debug.Log("enable啦");
+        }
+        
     }
 
     public class SuckDick<T> : GlobalBehaviour

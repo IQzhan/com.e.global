@@ -1,5 +1,4 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace E
 {
@@ -33,18 +32,8 @@ namespace E
         {
             if (IsAlive && !IsAwaked && !IsLastActived)
             {
-                try
-                {
-                    OnAwake();
-                    IsAwaked = true;
-                }
-                catch (Exception e)
-                {
-                    if (Debug.isDebugBuild)
-                    {
-                        Debug.LogException(e);
-                    }
-                }
+                OnAwake();
+                IsAwaked = true;
             }
         }
 
@@ -52,18 +41,8 @@ namespace E
         {
             if (!IsLastActived && IsActived)
             {
-                try
-                {
-                    OnEnable();
-                    IsLastActived = true;
-                }
-                catch (Exception e)
-                {
-                    if (Debug.isDebugBuild)
-                    {
-                        Debug.LogException(e);
-                    }
-                }
+                OnEnable();
+                IsLastActived = true;
             }
         }
 
@@ -71,18 +50,8 @@ namespace E
         {
             if (IsActived)
             {
-                try
-                {
-                    OnUpdate();
-                    IsLastActived = true;
-                }
-                catch (Exception e)
-                {
-                    if (Debug.isDebugBuild)
-                    {
-                        Debug.LogException(e);
-                    }
-                }
+                OnUpdate();
+                IsLastActived = true;
             }
         }
 
@@ -90,18 +59,8 @@ namespace E
         {
             if (IsLastActived && !IsActived)
             {
-                try
-                {
-                    OnDisable();
-                    IsLastActived = false;
-                }
-                catch (Exception e)
-                {
-                    if (Debug.isDebugBuild)
-                    {
-                        Debug.LogException(e);
-                    }
-                }
+                OnDisable();
+                IsLastActived = false;
             }
         }
 
@@ -111,31 +70,11 @@ namespace E
             {
                 if (IsLastActived)
                 {
-                    try
-                    {
-                        OnDisable();
-                        IsLastActived = false;
-                    }
-                    catch (Exception e)
-                    {
-                        if (Debug.isDebugBuild)
-                        {
-                            Debug.LogException(e);
-                        }
-                    }
+                    OnDisable();
+                    IsLastActived = false;
                 }
-                try
-                {
-                    OnDestroy();
-                    IsAwaked = false;
-                }
-                catch (Exception e)
-                {
-                    if (Debug.isDebugBuild)
-                    {
-                        Debug.LogException(e);
-                    }
-                }
+                OnDestroy();
+                IsAwaked = false;
             }
         }
     }
