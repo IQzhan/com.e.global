@@ -24,6 +24,10 @@ namespace E
 
         public event Action LateUpdateCallback;
 
+#if UNITY_EDITOR
+        public event Action OnDrawGizmosCallback;
+#endif
+
         private SortedList<int, TypeInfo> m_TypeInfos;
 
         private BehaviourCollection m_Collection;
@@ -32,7 +36,7 @@ namespace E
 
         private static readonly object m_Lock = new object();
 
-        private float m_LastTime;
+        private double m_LastTime;
 
         private List<int> m_EnableQueue;
 
@@ -99,11 +103,11 @@ namespace E
         private void Initialize()
         {
             if (IsReady) return;
-            CollectTypeInfos();
             m_Collection = new BehaviourCollection();
             m_EnableQueue = new List<int>();
             m_UpdateQueue = new List<int>();
             m_DisableQueue = new List<int>();
+            CollectTypeInfos();
             BehaviourUpdater.CreateInstance();
             IsReady = true;
         }
@@ -112,13 +116,11 @@ namespace E
         {
             if (!IsReady) return;
             IsReady = false;
-            DestroyAllInstances();
             BehaviourUpdater.DestroyInstance();
+            DestroyAll();
+            ClearLifeCycleQueues();
             m_TypeInfos.Clear();
             m_TypeInfos = null;
-            m_Collection.Clear();
-            m_Collection = null;
-            ClearQueues();
             m_EnableQueue = null;
             m_UpdateQueue = null;
             m_DisableQueue = null;
@@ -141,36 +143,60 @@ namespace E
                 .OrderBy(i => i.order)
                 .ToArray();
             for (int i = 0; i < order.Length; i++)
+            { CreateInstance(order[i].type); }
+        }
+
+        private void DestroyAll()
+        {
+            foreach (GlobalBehaviour behaviour in m_Collection)
             {
-                CreateInstance(order[i].type);
+                behaviour.InternalDestroy();
             }
+            m_Collection.Clear();
+            m_Collection = null;
+        }
+
+        public T CreateInstance<T>() where T : GlobalBehaviour
+        {
+            return CreateInstance(typeof(T)) as T;
         }
 
         public GlobalBehaviour CreateInstance(in Type type)
         {
-            if (!m_TypeInfos.TryGetValue(type.GetHashCode(), out TypeInfo typeInfo))
-            {
-                throw new Exception($"Type '{type}' is not inherit from type '{typeof(GlobalBehaviour)}'.");
-            }
+            if (!GetTypeInfo(type, out TypeInfo typeInfo)) return null;
             GlobalBehaviour behaviour = Activator.CreateInstance(type) as GlobalBehaviour;
             behaviour.IsExecuteInEditorMode = typeInfo.isExecuteInEditorMode;
-            Debug.Log("AA " + (behaviour != null)); return default;
             m_Collection.Add(behaviour);
             behaviour.InernalAwake();
-            CheckToEnable(behaviour);
-            CheckToUpdate(behaviour);
-            CheckToDisable(behaviour);
+            CheckLifeCycleState(behaviour);
             return behaviour;
+        }
+
+        public T GetInstance<T>() where T : GlobalBehaviour
+        {
+            return GetInstance(typeof(T)) as T;
         }
 
         public GlobalBehaviour GetInstance(in Type type)
         {
+            if (!GetTypeInfo(type, out TypeInfo _)) return null;
             return m_Collection.Get(type);
+        }
+
+        public T[] GetInstances<T>() where T : GlobalBehaviour
+        {
+            return GetInstances(typeof(T)).Cast<T>().ToArray();
         }
 
         public GlobalBehaviour[] GetInstances(in Type type)
         {
+            if (!GetTypeInfo(type, out TypeInfo _)) return null;
             return m_Collection.Gets(type);
+        }
+
+        public void DestroyInstance<T>(in T behaviour) where T : GlobalBehaviour
+        {
+            DestroyInstance(behaviour);
         }
 
         public void DestroyInstance(in GlobalBehaviour behaviour)
@@ -179,91 +205,105 @@ namespace E
             m_Collection.Remove(behaviour);
         }
 
-        private void DestroyAllInstances()
+        private bool GetTypeInfo(in Type type, out TypeInfo typeInfo)
         {
-
+            if (!m_TypeInfos.TryGetValue(type.GetHashCode(), out typeInfo))
+            {
+                throw new Exception($"Type '{type}' is not inherit from type '{typeof(GlobalBehaviour)}'.");
+            }
+            return true;
         }
 
         internal void FixedUpdate()
         {
             if (IsReady && UpdateMethod == BehaviourSettings.UpdateMethod.FixedUpdate)
-            {
-                MainUpdate();
-            }
-            FixedUpdateCallback?.Invoke();
+            { UpdateLifeCycle(); }
+            LogTryCatchEvent(FixedUpdateCallback);
         }
 
         internal void Update()
         {
             if (IsReady && UpdateMethod == BehaviourSettings.UpdateMethod.Update)
-            {
-                MainUpdate();
-            }
-            UpdateCallback?.Invoke();
+            { UpdateLifeCycle(); }
+            LogTryCatchEvent(UpdateCallback);
         }
 
         internal void LateUpdate()
         {
             if (IsReady && UpdateMethod == BehaviourSettings.UpdateMethod.LateUpdate)
-            {
-                MainUpdate();
-            }
-            LateUpdateCallback?.Invoke();
+            { UpdateLifeCycle(); }
+            LogTryCatchEvent(LateUpdateCallback);
         }
 
-        private void MainUpdate()
+#if UNITY_EDITOR
+        internal void OnDrawGizmos()
         {
-            if (Time.realtimeSinceStartup - m_LastTime >= DeltaTime)
-            {
-                m_LastTime = Time.realtimeSinceStartup;
-                UpdateBehaviours();
-            }
+            LogTryCatchEvent(OnDrawGizmosCallback);
         }
+#endif
 
-        private void UpdateBehaviours()
+        private void LogTryCatchEvent(in Action action)
         {
-            ClearQueues();
-            foreach (GlobalBehaviour behaviour in m_Collection)
+            try
             {
-                CheckToEnable(behaviour);
-                CheckToUpdate(behaviour);
-                CheckToDisable(behaviour);
+                action?.Invoke();
             }
-            InternalEnable();
-            InternalUpdate();
-            InternalDisable();
-            ClearQueues();
+            catch (Exception e)
+            {
+                if (Debug.isDebugBuild)
+                {
+                    Debug.LogException(e);
+                }
+            }
         }
 
-        private void ClearQueues()
+        private void UpdateLifeCycle()
+        {
+            if (Time.realtimeSinceStartupAsDouble - m_LastTime >= DeltaTime)
+            {
+                m_LastTime = Time.realtimeSinceStartupAsDouble;
+                ClearLifeCycleQueues();
+                CheckAllLifeCycleState();
+                InternalLifeCycleBody();
+            }
+        }
+
+        private void ClearLifeCycleQueues()
         {
             m_EnableQueue.Clear();
             m_UpdateQueue.Clear();
             m_DisableQueue.Clear();
         }
 
-        private void CheckToEnable(in GlobalBehaviour behaviour)
+        private void CheckAllLifeCycleState()
         {
-            if (!behaviour.IsLastActived && behaviour.IsActived)
+            foreach (GlobalBehaviour behaviour in m_Collection)
+            { CheckLifeCycleState(behaviour); }
+        }
+
+        private void CheckLifeCycleState(in GlobalBehaviour behaviour)
+        {
+            bool isActived = behaviour.IsActived;
+            bool isLastActived = behaviour.IsLastActived;
+            if (!isLastActived && isActived)
             {
                 m_EnableQueue.Add(behaviour.ID);
             }
-        }
-
-        private void CheckToUpdate(in GlobalBehaviour behaviour)
-        {
-            if (behaviour.IsActived)
+            if (isActived)
             {
                 m_UpdateQueue.Add(behaviour.ID);
             }
-        }
-
-        private void CheckToDisable(in GlobalBehaviour behaviour)
-        {
-            if (behaviour.IsLastActived && !behaviour.IsActived)
+            if (isLastActived && !isActived)
             {
                 m_DisableQueue.Add(behaviour.ID);
             }
+        }
+
+        private void InternalLifeCycleBody()
+        {
+            InternalEnable();
+            InternalUpdate();
+            InternalDisable();
         }
 
         private void InternalEnable()
@@ -276,8 +316,7 @@ namespace E
                 if (behaviour != null)
                 {
                     behaviour.InernalEnable();
-                    CheckToUpdate(behaviour);
-                    CheckToDisable(behaviour);
+                    CheckLifeCycleState(behaviour);
                 }
                 index++;
             }
@@ -293,7 +332,7 @@ namespace E
                 if (behaviour != null)
                 {
                     behaviour.InternalUpdate();
-                    CheckToDisable(behaviour);
+                    CheckLifeCycleState(behaviour);
                 }
                 index++;
             }
@@ -309,6 +348,7 @@ namespace E
                 if (behaviour != null)
                 {
                     behaviour.InternalDisable();
+                    CheckLifeCycleState(behaviour);
                 }
                 index++;
             }
