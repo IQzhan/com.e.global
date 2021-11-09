@@ -4,59 +4,50 @@ using System.Collections.Generic;
 
 namespace E
 {
-    public class BehaviourCollection : IEnumerable<GlobalBehaviour>, IEnumerable
+    internal class BehaviourCollection : IEnumerable<GlobalBehaviour>, IEnumerable
     {
         public BehaviourCollection()
         {
             linkFactory = new LinkFactory<GlobalBehaviour>();
-            typeLinks = new SortedList<int, LinkFactory<GlobalBehaviour>.LinkAddress>();
+            typeLinks = new SortedList<int, LinkFactory<GlobalBehaviour>.Address>();
         }
 
         private readonly LinkFactory<GlobalBehaviour> linkFactory;
 
-        private readonly SortedList<int, LinkFactory<GlobalBehaviour>.LinkAddress> typeLinks;
+        private readonly SortedList<int, LinkFactory<GlobalBehaviour>.Address> typeLinks;
 
-        private void GetTypeLink(in Type type, out LinkFactory<GlobalBehaviour>.LinkAddress typelink)
-        {
-            int hashCode = type.GetHashCode();
-            if (!typeLinks.TryGetValue(hashCode, out typelink))
-            {
-                typelink = linkFactory.RequireNewLink();
-                typeLinks.Add(hashCode, typelink);
-            }
-        }
-
-        private void SetTypeLink(in Type type, in LinkFactory<GlobalBehaviour>.LinkAddress typelink)
-        {
-            int hashCode = type.GetHashCode();
-            typeLinks[hashCode] = typelink;
-        }
+        public GlobalBehaviour this[in int id]
+        { get => linkFactory.Get(id); }
 
         public void Add(in GlobalBehaviour value)
         {
             Type type = value.GetType();
-            GetTypeLink(type, out LinkFactory<GlobalBehaviour>.LinkAddress typelink);
+            int hashCode = type.GetHashCode();
+            GetTypeLink(hashCode, out LinkFactory<GlobalBehaviour>.Address typelink);
             value.ID = linkFactory.Add(ref typelink, value);
-            SetTypeLink(type, typelink);
+            SetTypeLink(hashCode, typelink);
         }
 
         public void Remove(in GlobalBehaviour value)
         {
             Type type = value.GetType();
-            GetTypeLink(type, out LinkFactory<GlobalBehaviour>.LinkAddress typelink);
+            int hashCode = type.GetHashCode();
+            GetTypeLink(hashCode, out LinkFactory<GlobalBehaviour>.Address typelink);
             linkFactory.Remove(ref typelink, value.ID);
-            SetTypeLink(type, typelink);
+            SetTypeLink(hashCode, typelink);
         }
 
         public GlobalBehaviour Get(in Type type)
         {
-            GetTypeLink(type, out LinkFactory<GlobalBehaviour>.LinkAddress typelink);
+            int hashCode = type.GetHashCode();
+            GetTypeLink(hashCode, out LinkFactory<GlobalBehaviour>.Address typelink);
             return linkFactory.Get(typelink.first);
         }
 
         public GlobalBehaviour[] Gets(in Type type)
         {
-            GetTypeLink(type, out LinkFactory<GlobalBehaviour>.LinkAddress typelink);
+            int hashCode = type.GetHashCode();
+            GetTypeLink(hashCode, out LinkFactory<GlobalBehaviour>.Address typelink);
             return linkFactory.Gets(typelink.first);
         }
 
@@ -66,28 +57,26 @@ namespace E
             typeLinks.Clear();
         }
 
-        private GlobalBehaviour GetFirst()
+        private void GetTypeLink(in int hashCode, out LinkFactory<GlobalBehaviour>.Address typelink)
         {
-            return linkFactory.GetFirst();
+            if (!typeLinks.TryGetValue(hashCode, out typelink))
+            {
+                typelink = linkFactory.RequireNewLink();
+                typeLinks.Add(hashCode, typelink);
+            }
         }
 
-        private GlobalBehaviour GetNext(in int address)
+        private void SetTypeLink(in int hashCode, in LinkFactory<GlobalBehaviour>.Address typelink)
         {
-            return linkFactory.GetNext(address);
+            typeLinks[hashCode] = typelink;
         }
 
         #region Enumerator
         public struct Enumerator : IEnumerator<GlobalBehaviour>, IEnumerator, IDisposable
         {
-            public Enumerator(in BehaviourCollection collection)
-            {
-                this.collection = collection;
-                current = null;
-            }
+            internal LinkFactory<GlobalBehaviour> body;
 
-            private BehaviourCollection collection;
-
-            private GlobalBehaviour current;
+            internal GlobalBehaviour current;
 
             public GlobalBehaviour Current { get => current; }
 
@@ -102,272 +91,299 @@ namespace E
             {
                 if (current == null)
                 {
-                    current = collection.GetFirst();
+                    current = body.GetAddressFirst();
                 }
                 else
                 {
-                    current = collection.GetNext(current.ID);
+                    current = body.GetAddressNext(current.ID);
                 }
                 return current != null;
             }
 
             public void Dispose()
             {
-
+                current = null;
+                body = null;
             }
         }
 
         public IEnumerator<GlobalBehaviour> GetEnumerator()
         {
-            return new Enumerator(this);
+            return new Enumerator() { body = linkFactory, current = null };
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return new Enumerator(this);
+            return new Enumerator { body = linkFactory, current = null };
         }
         #endregion
-    }
 
-    internal class LinkFactory<T>
-    {
-        private struct Node
+        internal class LinkFactory<T>
         {
-            public static Node Default { get => new Node() { value = default, prev = -1, next = -1, addressPrev = -1, addressNext = -1 }; }
-
-            public T value;
-
-            internal int prev;
-
-            internal int next;
-
-            internal int addressPrev;
-
-            internal int addressNext;
-        }
-
-        public struct LinkAddress
-        {
-            public static LinkAddress Default { get => new LinkAddress() { first = -1, last = -1 }; }
-
-            internal int first;
-
-            internal int last;
-        }
-
-        private readonly List<Node> m_Block;
-
-        private readonly Stack<int> m_Uunused;
-
-        private LinkAddress m_FirstAddress;
-
-        public LinkFactory()
-        {
-            m_Block = new List<Node>();
-            m_Uunused = new Stack<int>();
-            m_FirstAddress = LinkAddress.Default;
-        }
-
-        public void Clear()
-        {
-            m_Block.Clear();
-            m_Uunused.Clear();
-            m_FirstAddress = LinkAddress.Default;
-        }
-
-        public LinkAddress RequireNewLink()
-        {
-            return new LinkAddress() { first = -1, last = -1 };
-        }
-
-        public T[] Gets(in int address)
-        {
-            List<T> result = new List<T>();
-            int currAddress = address;
-            while (currAddress != -1)
+            private struct Node
             {
-                Node currNode = m_Block[currAddress];
-                if (currNode.value != null)
+                public static Node Default { get => new Node() { value = default, prev = -1, next = -1, addressPrev = -1, addressNext = -1 }; }
+
+                public T value;
+
+                public int prev;
+
+                public int next;
+
+                public int addressPrev;
+
+                public int addressNext;
+            }
+
+            internal struct Address
+            {
+                public static Address Default { get => new Address() { first = -1, last = -1 }; }
+
+                public int first;
+
+                public int last;
+            }
+
+            private interface INodeSetter
+            {
+                void SetPrev(ref Node node, in int addr);
+
+                void SetNext(ref Node node, in int addr);
+
+                int GetPrev(in Node node);
+
+                int GetNext(in Node node);
+            }
+
+            private struct NodeSetter : INodeSetter
+            {
+                public int GetNext(in Node node)
                 {
-                    result.Add(currNode.value);
+                    return node.next;
                 }
-                currAddress = currNode.next;
-            }
-            return result.ToArray();
-        }
 
-        public T GetFirst()
-        {
-            if (m_FirstAddress.first != -1)
-            {
-                return m_Block[m_FirstAddress.first].value;
-            }
-            return default;
-        }
+                public int GetPrev(in Node node)
+                {
+                    return node.prev;
+                }
 
-        public T GetNext(in int address)
-        {
-            int index = m_Block[address].next;
-            if (index != -1)
-            {
-                return m_Block[index].value;
-            }
-            return default;
-        }
+                public void SetNext(ref Node node, in int addr)
+                {
+                    node.prev = addr;
+                }
 
-        public T Get(in int address)
-        {
-            return m_Block[address].value;
-        }
+                public void SetPrev(ref Node node, in int addr)
+                {
+                    node.next = addr;
+                }
+            }
 
-        public int Add(ref LinkAddress linkAddress, in T value)
-        {
-            int address = RequireAddress();
-            Node node = Node.Default;
-            node.value = value;
-            AddNormalLinkNode(ref linkAddress, address, ref node);
-            AddSingleLinkNode(ref linkAddress, address, ref node);
-            m_Block[address] = node;
-            return address;
-        }
+            private struct MainNodeSetter : INodeSetter
+            {
+                public int GetNext(in Node node)
+                {
+                    return node.addressNext;
+                }
 
-        public void Remove(ref LinkAddress linkAddress, in int address)
-        {
-            Node currNode = m_Block[address];
-            RemoveNormalLinkNode(ref linkAddress, currNode);
-            RemoveSingleLinkNode(ref linkAddress, currNode);
-            ReleaseAddress(address);
-        }
+                public int GetPrev(in Node node)
+                {
+                    return node.addressPrev;
+                }
 
-        private int RequireAddress()
-        {
-            if (m_Uunused.Count == 0)
-            {
-                m_Block.Add(Node.Default);
-                return m_Block.Count - 1;
-            }
-            return m_Uunused.Pop();
-        }
+                public void SetNext(ref Node node, in int addr)
+                {
+                    node.addressPrev = addr;
+                }
 
-        private void ReleaseAddress(in int address)
-        {
-            m_Block[address] = Node.Default;
-            m_Uunused.Push(address);
-        }
+                public void SetPrev(ref Node node, in int addr)
+                {
+                    node.addressNext = addr;
+                }
+            }
 
-        private void AddNormalLinkNode(ref LinkAddress linkAddress, in int address, ref Node node)
-        {
-            if (linkAddress.first == -1 && linkAddress.last == -1)
-            {
-                linkAddress.first = address;
-                linkAddress.last = address;
-            }
-            else
-            {
-                int prevAddress = linkAddress.last;
-                Node prev = m_Block[prevAddress];
-                prev.next = address;
-                m_Block[prevAddress] = prev;
-                node.prev = prevAddress;
-                linkAddress.last = address;
-            }
-        }
+            private readonly List<Node> m_Block;
 
-        private void AddSingleLinkNode(ref LinkAddress linkAddress, in int address, ref Node node)
-        {
-            if (m_FirstAddress.first == -1 && m_FirstAddress.last == -1)
-            {
-                m_FirstAddress.first = address;
-                m_FirstAddress.last = address;
-            }
-            else
-            {
-                int prevAddress = m_FirstAddress.last;
-                Node prev = m_Block[prevAddress];
-                prev.addressNext = address;
-                m_Block[prevAddress] = prev;
-                node.addressPrev = prevAddress;
-                m_FirstAddress.last = address;
-            }
-        }
+            private readonly Stack<int> m_Uunused;
 
-        private void RemoveNormalLinkNode(ref LinkAddress linkAddress, in Node currNode)
-        {
-            int prevAddress = currNode.prev;
-            int nextAddress = currNode.next;
-            bool hasPrev = prevAddress != -1;
-            bool hasNext = nextAddress != -1;
-            if (hasPrev && hasNext)
-            {
-                //curr in mid
-                Node prev = m_Block[prevAddress];
-                Node next = m_Block[nextAddress];
-                prev.next = nextAddress;
-                next.prev = prevAddress;
-                m_Block[prevAddress] = prev;
-                m_Block[nextAddress] = next;
-            }
-            else if (hasPrev && !hasNext)
-            {
-                //curr is tail
-                Node prev = m_Block[prevAddress];
-                prev.next = -1;
-                m_Block[prevAddress] = prev;
-                linkAddress.last = prevAddress;
-            }
-            else if (!hasPrev && hasNext)
-            {
-                //curr is head
-                Node next = m_Block[nextAddress];
-                next.prev = -1;
-                m_Block[nextAddress] = next;
-                linkAddress.first = nextAddress;
-            }
-            else
-            {
-                //curr is head and tail
-                linkAddress.first = -1;
-                linkAddress.last = -1;
-            }
-        }
+            private Address m_Main;
 
-        private void RemoveSingleLinkNode(ref LinkAddress linkAddress, in Node currNode)
-        {
-            int prevAddress = currNode.addressPrev;
-            int nextAddress = currNode.addressNext;
-            bool hasPrev = prevAddress != -1;
-            bool hasNext = nextAddress != -1;
-            if (hasPrev && hasNext)
+            private NodeSetter m_NodeSetter;
+
+            private MainNodeSetter m_MainNodeSetter;
+
+            private List<T> m_HelperList;
+
+            public LinkFactory()
             {
-                //curr in mid
-                Node prev = m_Block[prevAddress];
-                Node next = m_Block[nextAddress];
-                prev.addressNext = nextAddress;
-                next.addressPrev = prevAddress;
-                m_Block[prevAddress] = prev;
-                m_Block[nextAddress] = next;
+                m_Block = new List<Node>();
+                m_Uunused = new Stack<int>();
+                m_Main = Address.Default;
+                m_NodeSetter = new NodeSetter();
+                m_MainNodeSetter = new MainNodeSetter();
+                m_HelperList = new List<T>();
             }
-            else if (hasPrev && !hasNext)
+
+            public void Clear()
             {
-                //curr is tail
-                Node prev = m_Block[prevAddress];
-                prev.addressNext = -1;
-                m_Block[prevAddress] = prev;
-                linkAddress.last = prevAddress;
+                m_Block.Clear();
+                m_Uunused.Clear();
+                m_Main = Address.Default;
+                m_HelperList.Clear();
             }
-            else if (!hasPrev && hasNext)
+
+            public Address RequireNewLink()
             {
-                //curr is head
-                Node next = m_Block[nextAddress];
-                next.addressPrev = -1;
-                m_Block[nextAddress] = next;
-                linkAddress.first = nextAddress;
+                return Address.Default;
             }
-            else
+
+            public T[] Gets(in int address)
             {
-                //curr is head and tail
-                linkAddress.first = -1;
-                linkAddress.last = -1;
+                m_HelperList.Clear();
+                int currAddress = address;
+                while (currAddress != -1)
+                {
+                    Node currNode = m_Block[currAddress];
+                    if (currNode.value != null)
+                    {
+                        m_HelperList.Add(currNode.value);
+                    }
+                    currAddress = currNode.next;
+                }
+                T[] array = m_HelperList.ToArray();
+                return array;
+            }
+
+            public T GetAddressFirst()
+            {
+                if (m_Main.first != -1)
+                {
+                    return m_Block[m_Main.first].value;
+                }
+                return default;
+            }
+
+            public T GetAddressNext(in int address)
+            {
+                int index = m_Block[address].addressNext;
+                if (index != -1)
+                {
+                    return m_Block[index].value;
+                }
+                return default;
+            }
+
+            public T Get(in int address)
+            {
+                if (address != -1)
+                {
+                    return m_Block[address].value;
+                }
+                return default;
+            }
+
+            public T GetNext(in int address)
+            {
+                int index = m_Block[address].next;
+                if (index != -1)
+                {
+                    return m_Block[index].value;
+                }
+                return default;
+            }
+
+            public int Add(ref Address linkAddress, in T value)
+            {
+                int address = RequireAddress();
+                Node node = Node.Default;
+                node.value = value;
+                AddLinkNode(ref linkAddress, address, ref node, m_NodeSetter);
+                AddLinkNode(ref m_Main, address, ref node, m_MainNodeSetter);
+                m_Block[address] = node;
+                return address;
+            }
+
+            public void Remove(ref Address linkAddress, in int address)
+            {
+                Node currNode = m_Block[address];
+                RemoveLinkNode(ref linkAddress, currNode, m_NodeSetter);
+                RemoveLinkNode(ref m_Main, currNode, m_MainNodeSetter);
+                ReleaseAddress(address);
+            }
+
+            private int RequireAddress()
+            {
+                if (m_Uunused.Count == 0)
+                {
+                    m_Block.Add(Node.Default);
+                    return m_Block.Count - 1;
+                }
+                return m_Uunused.Pop();
+            }
+
+            private void ReleaseAddress(in int address)
+            {
+                m_Block[address] = Node.Default;
+                m_Uunused.Push(address);
+            }
+
+            private void AddLinkNode<Setter>(ref Address linkAddress, in int address, ref Node node,
+                in Setter setter) where Setter : struct, INodeSetter
+            {
+                if (linkAddress.first == -1 && linkAddress.last == -1)
+                {
+                    linkAddress.first = address;
+                    linkAddress.last = address;
+                }
+                else
+                {
+                    int prevAddress = linkAddress.last;
+                    Node prev = m_Block[prevAddress];
+                    setter.SetNext(ref prev, address);
+                    m_Block[prevAddress] = prev;
+                    setter.SetPrev(ref node, prevAddress);
+                    linkAddress.last = address;
+                }
+            }
+
+            private void RemoveLinkNode<Setter>(ref Address linkAddress, in Node currNode,
+                in Setter setter) where Setter : struct, INodeSetter
+            {
+                int prevAddress = setter.GetPrev(currNode);
+                int nextAddress = setter.GetNext(currNode);
+                bool hasPrev = prevAddress != -1;
+                bool hasNext = nextAddress != -1;
+                if (hasPrev && hasNext)
+                {
+                    //curr in mid
+                    Node prev = m_Block[prevAddress];
+                    Node next = m_Block[nextAddress];
+                    setter.SetNext(ref prev, nextAddress);
+                    setter.SetPrev(ref next, prevAddress);
+                    m_Block[prevAddress] = prev;
+                    m_Block[nextAddress] = next;
+                }
+                else if (hasPrev && !hasNext)
+                {
+                    //curr is tail
+                    Node prev = m_Block[prevAddress];
+                    setter.SetNext(ref prev, -1);
+                    m_Block[prevAddress] = prev;
+                    linkAddress.last = prevAddress;
+                }
+                else if (!hasPrev && hasNext)
+                {
+                    //curr is head
+                    Node next = m_Block[nextAddress];
+                    setter.SetPrev(ref next, -1);
+                    m_Block[nextAddress] = next;
+                    linkAddress.first = nextAddress;
+                }
+                else
+                {
+                    //curr is head and tail
+                    linkAddress.first = -1;
+                    linkAddress.last = -1;
+                }
             }
         }
     }

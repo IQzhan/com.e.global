@@ -23,9 +23,6 @@ namespace E
 
         private static readonly object m_Lock = new object();
 
-        [SerializeField, HideInInspector]
-        private GameObject m_CreatedGameobject;
-
         private static T m_Instance;
 
         public static T Instance
@@ -56,12 +53,12 @@ namespace E
                 }
                 else
                 {
-                    if(m_Instance == null)
+                    if (m_Instance == null)
                     {
                         lock (m_Lock)
                         {
                             T[] objs = FindObjectsOfType<T>();
-                            if(objs.Length == 1)
+                            if (objs.Length == 1)
                             {
                                 m_Instance = objs[0];
                             }
@@ -104,17 +101,15 @@ namespace E
             {
                 GameObject obj = new GameObject(InstanceName);
                 m_Instance = obj.AddComponent<T>();
-                m_Instance.m_CreatedGameobject = obj;
             }
             else if (objs.Length == 1)
             {
                 m_Instance = objs[0];
-                m_Instance.m_CreatedGameobject = null;
             }
             else
             {
                 // How to find the correct one?
-                throw new System.Exception($"Instance of '{InstanceName}' can not be more then one.");
+                throw new Exception($"Instance of '{InstanceName}' can not be more then one.");
             }
         }
 
@@ -193,14 +188,7 @@ namespace E
 
         private static void SafeDestroy(T instance)
         {
-            if (instance.m_CreatedGameobject != null)
-            {
-                SafeDestroyImmediate(instance.m_CreatedGameobject);
-            }
-            else
-            {
-                SafeDestroyImmediate(instance);
-            }
+            SafeDestroyImmediate(instance.gameObject);
         }
 
         private static void SafeDestroyImmediate<T0>(T0 obj) where T0 : UnityEngine.Object
