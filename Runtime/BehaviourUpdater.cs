@@ -3,7 +3,7 @@
 namespace E
 {
     [ExecuteAlways, Singleton(Name = "Behaviour Updater", Persistent = true)]
-    public class BehaviourUpdater : Singleton<BehaviourUpdater>
+    public sealed partial class BehaviourUpdater : Singleton<BehaviourUpdater>
     {
         internal BehaviourManager manager;
 
