@@ -1,11 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEngine;
-using UnityEngine.Profiling;
 
 namespace E
 {
@@ -31,7 +25,7 @@ namespace E
         protected override void OnEnable()
         {
             Debug.Log("OnEnable啦");
-            
+
         }
 
         protected override void OnUpdate()

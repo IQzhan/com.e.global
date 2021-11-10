@@ -10,6 +10,8 @@ namespace E
 {
     public sealed partial class BehaviourManager
     {
+        #region Public properties
+
         public static bool IsReady { get => m_Instance.m_IsReady; }
 
         public static BehaviourSettings.UpdateMethod UpdateMethod { get => BehaviourSettings.Instance.updateMethod; }
@@ -31,6 +33,9 @@ namespace E
 #if UNITY_EDITOR
         public static event Action OnDrawGizmosCallback;
 #endif
+        #endregion
+
+        #region Private properties
 
         private bool m_IsReady;
 
@@ -39,8 +44,6 @@ namespace E
         private BehaviourCollection m_Collection;
 
         private static BehaviourManager m_Instance;
-
-        private bool m_IsFirstAccessing;
 
         private double m_LastTime;
 
@@ -59,12 +62,9 @@ namespace E
             UpdateAndDisable = Update | Disable
         }
 
-        static BehaviourManager()
-        { m_Instance = new BehaviourManager(); }
+        #endregion
 
-        private BehaviourManager() { Initialize(); }
-
-        ~BehaviourManager() { Destroy(); }
+        #region Public methods
 
         public static T CreateInstance<T>() where T : GlobalBehaviour
         {
@@ -101,8 +101,42 @@ namespace E
             m_Instance.InternalDestroyInstance(behaviour);
         }
 
+        #endregion
+
+        #region Initialize & Dispose
+
+        static BehaviourManager()
+        { m_Instance = new BehaviourManager(); }
+
+        private BehaviourManager() { Initialize(); }
+
+        ~BehaviourManager() { Destroy(); }
+
 #if UNITY_EDITOR
-        [InitializeOnLoadMethod, UnityEditor.Callbacks.DidReloadScripts]
+
+        [InitializeOnLoadMethod]
+        private static void InitializeOnLoadInEditor()
+        {
+            EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
+            EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+        }
+
+        private static void OnPlayModeStateChanged(PlayModeStateChange stateChange)
+        {
+            Debug.Log("stateChange");
+            switch (stateChange)
+            {
+                case PlayModeStateChange.EnteredEditMode:
+                case PlayModeStateChange.EnteredPlayMode:
+                    InitializeOnLoadInRuntime();
+                    break;
+                case PlayModeStateChange.ExitingEditMode:
+                case PlayModeStateChange.ExitingPlayMode:
+                    break;
+            }
+        }
+
+        [UnityEditor.Callbacks.DidReloadScripts]
 #else
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
 #endif
@@ -115,15 +149,11 @@ namespace E
         {
             try
             {
-                if (m_IsReady) return;
-                CreateTypeInfos();
+                ClearCallbacks();
                 CreateLifeCycleQueues();
                 CreateCollection();
-                ClearCallbacks();
                 BehaviourUpdater.CreateInstance();
                 BehaviourUpdater.Instance.manager = this;
-                m_IsReady = true;
-                m_IsFirstAccessing = true;
             }
             catch (Exception e)
             {
@@ -139,12 +169,10 @@ namespace E
         {
             try
             {
-                if (!m_IsReady) return;
-                m_IsReady = false;
                 BehaviourUpdater.DestroyInstance();
                 ReleaseCollection();
-                ClearCallbacks();
                 ReleaseLifeCycleQueues();
+                ClearCallbacks();
                 ReleaseTypeInfos();
                 GC.SuppressFinalize(this);
             }
@@ -158,13 +186,37 @@ namespace E
             }
         }
 
+        private void FirstAccess()
+        {
+            try
+            {
+                if (m_IsReady) return;
+                ExecuteBefore();
+                CreateTypeInfos();
+                AutoCreateInstances();
+                m_IsReady = true;
+            }
+            catch (Exception e)
+            {
+                if (Debug.isDebugBuild)
+                {
+                    Debug.LogException(e);
+                }
+            }
+        }
+
         private void ExecuteBefore()
         {
-            // TODO 查找函数
-            // InitializeBeforeAllBehavioursMethodAttribute
-            //AppDomain.CurrentDomain.GetAssemblies()
-            //    .SelectMany(a => a.GetTypes().SelectMany(t => t.GetMethods()
-            //    .Where(m => m.IsStatic)))
+            Type attrType = typeof(InitializeBeforeAllBehavioursMethodAttribute);
+            var methods = AppDomain.CurrentDomain.GetAssemblies()
+                .SelectMany(a => a.GetTypes()
+                .SelectMany(t => t.GetMethods()
+                .Where(m => m.IsStatic && !m.IsGenericMethod && !m.IsConstructor &&
+                (m.GetCustomAttributes(attrType, true).FirstOrDefault() is InitializeBeforeAllBehavioursMethodAttribute) &&
+                (m.GetParameters().Length == 0))));
+            var paramObjs = new object[0];
+            foreach (var method in methods)
+            { method.Invoke(null, paramObjs); }
         }
 
         private void CreateTypeInfos()
@@ -179,15 +231,24 @@ namespace E
                 !t.IsGenericType)
                 .Select(t => new TypeInfo(t)));
             if (ResetTypeInfosCallback != null)
-            {
-                typeInfos = ResetTypeInfosCallback(typeInfos);
-            }
+            { typeInfos = ResetTypeInfosCallback(typeInfos); }
             m_TypeInfos = new SortedList<int, TypeInfo>
                 (typeInfos.ToDictionary(i => i.type.GetHashCode()));
         }
 
+        private void AutoCreateInstances()
+        {
+            TypeInfo[] autoOrder = m_TypeInfos.Select(kv => kv.Value)
+                   .Where(i => i.isAutoInstantiation)
+                   .OrderBy(i => i.order)
+                   .ToArray();
+            for (int i = 0; i < autoOrder.Length; i++)
+            { InternalCreateInstance(autoOrder[i].type); }
+        }
+
         private void ReleaseTypeInfos()
         {
+            if (m_TypeInfos == null) return;
             m_TypeInfos.Clear();
             m_TypeInfos = null;
         }
@@ -199,6 +260,7 @@ namespace E
 
         private void ReleaseCollection()
         {
+            if (m_Collection == null) return;
             foreach (GlobalBehaviour behaviour in m_Collection)
             {
                 try
@@ -226,10 +288,18 @@ namespace E
 
         private void ReleaseLifeCycleQueues()
         {
-            ClearLifeCycleQueues();
-            m_EnableQueue = null;
-            m_UpdateQueue = null;
-            m_DisableQueue = null;
+            ReleaseLifeCycleQueue(ref m_EnableQueue);
+            ReleaseLifeCycleQueue(ref m_UpdateQueue);
+            ReleaseLifeCycleQueue(ref m_DisableQueue);
+        }
+
+        private void ReleaseLifeCycleQueue(ref List<int> queue)
+        {
+            if (queue != null)
+            {
+                queue.Clear();
+                queue = null;
+            }
         }
 
         private void ClearLifeCycleQueues()
@@ -251,22 +321,9 @@ namespace E
 #endif
         }
 
-        private void FirstAccess()
-        {
-            if (!m_IsFirstAccessing) return;
-            m_IsFirstAccessing = false;
-            AutoCreateInstances();
-        }
+        #endregion
 
-        private void AutoCreateInstances()
-        {
-            TypeInfo[] autoOrder = m_TypeInfos.Select(kv => kv.Value)
-                   .Where(i => i.isAutoInstantiation)
-                   .OrderBy(i => i.order)
-                   .ToArray();
-            for (int i = 0; i < autoOrder.Length; i++)
-            { InternalCreateInstance(autoOrder[i].type); }
-        }
+        #region Life Cycle methods
 
         private T InternalCreateInstance<T>() where T : GlobalBehaviour
         {
@@ -539,5 +596,7 @@ namespace E
                 index++;
             }
         }
+
+        #endregion
     }
 }
