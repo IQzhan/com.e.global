@@ -8,25 +8,31 @@ using UnityEditor;
 
 namespace E
 {
-    public partial class BehaviourManager
+    public sealed partial class BehaviourManager
     {
-        public bool IsReady { get; private set; }
+        public static bool IsReady { get => m_Instance.m_IsReady; }
 
-        public BehaviourSettings.UpdateMethod UpdateMethod { get => BehaviourSettings.Instance.updateMethod; }
+        public static BehaviourSettings.UpdateMethod UpdateMethod { get => BehaviourSettings.Instance.updateMethod; }
 
-        public float DeltaTime { get => BehaviourSettings.Instance.deltaTime; }
+        public static float DeltaTime { get => BehaviourSettings.Instance.deltaTime; }
 
-        public BehaviourUpdater MonoBehaviour { get => BehaviourUpdater.Instance; }
+        public static BehaviourUpdater MonoBehaviour { get => BehaviourUpdater.Instance; }
 
-        public event Action FixedUpdateCallback;
+        public static event Func<IEnumerable<TypeInfo>, IEnumerable<TypeInfo>> ResetTypeInfosCallback;
 
-        public event Action UpdateCallback;
+        public static event Func<TypeInfo, GlobalBehaviour> OverrideCreateInstanceCallback;
 
-        public event Action LateUpdateCallback;
+        public static event Action FixedUpdateCallback;
+
+        public static event Action UpdateCallback;
+
+        public static event Action LateUpdateCallback;
 
 #if UNITY_EDITOR
-        public event Action OnDrawGizmosCallback;
+        public static event Action OnDrawGizmosCallback;
 #endif
+
+        private bool m_IsReady;
 
         private SortedList<int, TypeInfo> m_TypeInfos;
 
@@ -34,7 +40,7 @@ namespace E
 
         private static BehaviourManager m_Instance;
 
-        private static readonly object m_Lock = new object();
+        private bool m_IsFirstAccessing;
 
         private double m_LastTime;
 
@@ -44,195 +50,335 @@ namespace E
 
         private List<int> m_DisableQueue;
 
+        private enum StateToCheck
+        {
+            Enable = 1,
+            Update = 1 << 1,
+            Disable = 1 << 2,
+            All = Enable | Update | Disable,
+            UpdateAndDisable = Update | Disable
+        }
+
+        static BehaviourManager()
+        { m_Instance = new BehaviourManager(); }
+
         private BehaviourManager() { Initialize(); }
 
         ~BehaviourManager() { Destroy(); }
 
-#if UNITY_EDITOR
-        [InitializeOnLoadMethod]
-        private static void InitializeOnLoadInEditor()
+        public static T CreateInstance<T>() where T : GlobalBehaviour
         {
-            EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
-            EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+            return m_Instance.InternalCreateInstance<T>();
         }
 
-        private static void OnPlayModeStateChanged(PlayModeStateChange stateChange)
+        public static GlobalBehaviour CreateInstance(in Type type)
         {
-            switch (stateChange)
-            {
-                case PlayModeStateChange.EnteredEditMode:
-                    Instance.Initialize();
-                    break;
-                case PlayModeStateChange.ExitingEditMode:
-                    Instance.Destroy();
-                    break;
-                case PlayModeStateChange.EnteredPlayMode:
-                    Instance.Initialize();
-                    break;
-                case PlayModeStateChange.ExitingPlayMode:
-                    Instance.Destroy();
-                    break;
-            }
+            return m_Instance.InternalCreateInstance(type);
         }
+
+        public static T GetInstance<T>() where T : GlobalBehaviour
+        {
+            return m_Instance.InternalGetInstance<T>();
+        }
+
+        public static GlobalBehaviour GetInstance(in Type type)
+        {
+            return m_Instance.InternalGetInstance(type);
+        }
+
+        public static T[] GetInstances<T>() where T : GlobalBehaviour
+        {
+            return m_Instance.InternalGetInstances<T>();
+        }
+
+        public static GlobalBehaviour[] GetInstances(in Type type)
+        {
+            return m_Instance.InternalGetInstances(type);
+        }
+
+        public static void DestroyInstance(in GlobalBehaviour behaviour)
+        {
+            m_Instance.InternalDestroyInstance(behaviour);
+        }
+
+#if UNITY_EDITOR
+        [InitializeOnLoadMethod, UnityEditor.Callbacks.DidReloadScripts]
 #else
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+#endif
         private static void InitializeOnLoadInRuntime()
         {
-            Instance.Initialize();
-        }
-#endif
-
-        public static BehaviourManager Instance
-        {
-            get
-            {
-                if (m_Instance == null)
-                {
-                    lock (m_Lock)
-                    {
-                        if (m_Instance == null)
-                        {
-                            m_Instance = new BehaviourManager();
-                        }
-                    }
-                }
-                return m_Instance;
-            }
+            m_Instance.FirstAccess();
         }
 
         private void Initialize()
         {
-            if (IsReady) return;
-            m_Collection = new BehaviourCollection();
-            m_EnableQueue = new List<int>();
-            m_UpdateQueue = new List<int>();
-            m_DisableQueue = new List<int>();
-            CollectTypeInfos();
-            BehaviourUpdater.CreateInstance();
-            IsReady = true;
+            try
+            {
+                if (m_IsReady) return;
+                CreateTypeInfos();
+                CreateLifeCycleQueues();
+                CreateCollection();
+                ClearCallbacks();
+                BehaviourUpdater.CreateInstance();
+                BehaviourUpdater.Instance.manager = this;
+                m_IsReady = true;
+                m_IsFirstAccessing = true;
+            }
+            catch (Exception e)
+            {
+                if (Debug.isDebugBuild)
+                {
+                    Debug.LogException(e);
+                }
+                return;
+            }
         }
 
         private void Destroy()
         {
-            if (!IsReady) return;
-            IsReady = false;
-            BehaviourUpdater.DestroyInstance();
-            DestroyAll();
-            ClearLifeCycleQueues();
-            m_TypeInfos.Clear();
-            m_TypeInfos = null;
-            m_EnableQueue = null;
-            m_UpdateQueue = null;
-            m_DisableQueue = null;
+            try
+            {
+                if (!m_IsReady) return;
+                m_IsReady = false;
+                BehaviourUpdater.DestroyInstance();
+                ReleaseCollection();
+                ClearCallbacks();
+                ReleaseLifeCycleQueues();
+                ReleaseTypeInfos();
+                GC.SuppressFinalize(this);
+            }
+            catch (Exception e)
+            {
+                if (Debug.isDebugBuild)
+                {
+                    Debug.LogException(e);
+                }
+                return;
+            }
         }
 
-        private void CollectTypeInfos()
+        private void ExecuteBefore()
+        {
+            // TODO 查找函数
+            // InitializeBeforeAllBehavioursMethodAttribute
+            //AppDomain.CurrentDomain.GetAssemblies()
+            //    .SelectMany(a => a.GetTypes().SelectMany(t => t.GetMethods()
+            //    .Where(m => m.IsStatic)))
+        }
+
+        private void CreateTypeInfos()
         {
             var baseType = typeof(GlobalBehaviour);
-            m_TypeInfos = new SortedList<int, TypeInfo>
-                (AppDomain.CurrentDomain.GetAssemblies()
+            IEnumerable<TypeInfo> typeInfos =
+                AppDomain.CurrentDomain.GetAssemblies()
                 .SelectMany(a => a.GetTypes()
                 .Where(t => baseType.IsAssignableFrom(t) &&
                 t.IsClass &&
                 !t.IsAbstract &&
                 !t.IsGenericType)
-                .Select(t => new TypeInfo(t)))
-                .ToDictionary(i => i.type.GetHashCode()));
-            TypeInfo[] order = m_TypeInfos.Select(kv => kv.Value)
-                .Where(i => i.isAutoInstantiation)
-                .OrderBy(i => i.order)
-                .ToArray();
-            for (int i = 0; i < order.Length; i++)
-            { CreateInstance(order[i].type); }
+                .Select(t => new TypeInfo(t)));
+            if (ResetTypeInfosCallback != null)
+            {
+                typeInfos = ResetTypeInfosCallback(typeInfos);
+            }
+            m_TypeInfos = new SortedList<int, TypeInfo>
+                (typeInfos.ToDictionary(i => i.type.GetHashCode()));
         }
 
-        private void DestroyAll()
+        private void ReleaseTypeInfos()
+        {
+            m_TypeInfos.Clear();
+            m_TypeInfos = null;
+        }
+
+        private void CreateCollection()
+        {
+            m_Collection = new BehaviourCollection();
+        }
+
+        private void ReleaseCollection()
         {
             foreach (GlobalBehaviour behaviour in m_Collection)
             {
-                behaviour.InternalDestroy();
+                try
+                {
+                    behaviour.InternalDestroy();
+                }
+                catch (Exception e)
+                {
+                    if (Debug.isDebugBuild)
+                    {
+                        Debug.LogException(e);
+                    }
+                }
             }
             m_Collection.Clear();
             m_Collection = null;
         }
 
-        public T CreateInstance<T>() where T : GlobalBehaviour
+        private void CreateLifeCycleQueues()
         {
-            return CreateInstance(typeof(T)) as T;
+            m_EnableQueue = new List<int>();
+            m_UpdateQueue = new List<int>();
+            m_DisableQueue = new List<int>();
         }
 
-        public GlobalBehaviour CreateInstance(in Type type)
+        private void ReleaseLifeCycleQueues()
+        {
+            ClearLifeCycleQueues();
+            m_EnableQueue = null;
+            m_UpdateQueue = null;
+            m_DisableQueue = null;
+        }
+
+        private void ClearLifeCycleQueues()
+        {
+            m_EnableQueue.Clear();
+            m_UpdateQueue.Clear();
+            m_DisableQueue.Clear();
+        }
+
+        private void ClearCallbacks()
+        {
+            ResetTypeInfosCallback = null;
+            OverrideCreateInstanceCallback = null;
+            FixedUpdateCallback = null;
+            UpdateCallback = null;
+            LateUpdateCallback = null;
+#if UNITY_EDITOR
+            OnDrawGizmosCallback = null;
+#endif
+        }
+
+        private void FirstAccess()
+        {
+            if (!m_IsFirstAccessing) return;
+            m_IsFirstAccessing = false;
+            AutoCreateInstances();
+        }
+
+        private void AutoCreateInstances()
+        {
+            TypeInfo[] autoOrder = m_TypeInfos.Select(kv => kv.Value)
+                   .Where(i => i.isAutoInstantiation)
+                   .OrderBy(i => i.order)
+                   .ToArray();
+            for (int i = 0; i < autoOrder.Length; i++)
+            { InternalCreateInstance(autoOrder[i].type); }
+        }
+
+        private T InternalCreateInstance<T>() where T : GlobalBehaviour
+        {
+            return InternalCreateInstance(typeof(T)) as T;
+        }
+
+        private GlobalBehaviour InternalCreateInstance(in Type type)
         {
             if (!GetTypeInfo(type, out TypeInfo typeInfo)) return null;
-            GlobalBehaviour behaviour = Activator.CreateInstance(type) as GlobalBehaviour;
-            behaviour.IsExecuteInEditorMode = typeInfo.isExecuteInEditorMode;
-            m_Collection.Add(behaviour);
-            behaviour.InernalAwake();
-            CheckLifeCycleState(behaviour);
+            GlobalBehaviour behaviour;
+            try
+            {
+                behaviour = CreateInstanceByTypeInfo(typeInfo);
+                if (behaviour == null) return null;
+                m_Collection.Add(behaviour);
+                behaviour.InernalAwake();
+                CheckLifeCycleState(behaviour, StateToCheck.All);
+            }
+            catch (Exception e)
+            {
+                if (Debug.isDebugBuild)
+                {
+                    Debug.LogException(e);
+                }
+                return null;
+            }
             return behaviour;
         }
 
-        public T GetInstance<T>() where T : GlobalBehaviour
+        private GlobalBehaviour CreateInstanceByTypeInfo(in TypeInfo typeInfo)
         {
-            return GetInstance(typeof(T)) as T;
+            if (OverrideCreateInstanceCallback != null)
+            {
+                return OverrideCreateInstanceCallback(typeInfo);
+            }
+            GlobalBehaviour behaviour = Activator.CreateInstance(typeInfo.type) as GlobalBehaviour;
+            behaviour.IsExecuteInEditorMode = typeInfo.isExecuteInEditorMode;
+            return behaviour;
         }
 
-        public GlobalBehaviour GetInstance(in Type type)
+        private T InternalGetInstance<T>() where T : GlobalBehaviour
+        {
+            return InternalGetInstance(typeof(T)) as T;
+        }
+
+        private GlobalBehaviour InternalGetInstance(in Type type)
         {
             if (!GetTypeInfo(type, out TypeInfo _)) return null;
             return m_Collection.Get(type);
         }
 
-        public T[] GetInstances<T>() where T : GlobalBehaviour
+        private T[] InternalGetInstances<T>() where T : GlobalBehaviour
         {
-            return GetInstances(typeof(T)).Cast<T>().ToArray();
+            return InternalGetInstances(typeof(T)).Cast<T>().ToArray();
         }
 
-        public GlobalBehaviour[] GetInstances(in Type type)
+        private GlobalBehaviour[] InternalGetInstances(in Type type)
         {
             if (!GetTypeInfo(type, out TypeInfo _)) return null;
             return m_Collection.Gets(type);
         }
 
-        public void DestroyInstance<T>(in T behaviour) where T : GlobalBehaviour
+        private void InternalDestroyInstance(in GlobalBehaviour behaviour)
         {
-            DestroyInstance(behaviour);
-        }
-
-        public void DestroyInstance(in GlobalBehaviour behaviour)
-        {
-            behaviour.InternalDestroy();
-            m_Collection.Remove(behaviour);
+            if (!GetTypeInfo(behaviour.GetType(), out TypeInfo _)) return;
+            try
+            {
+                behaviour.InternalDestroy();
+                m_Collection.Remove(behaviour);
+            }
+            catch (Exception e)
+            {
+                if (Debug.isDebugBuild)
+                {
+                    Debug.LogException(e);
+                }
+            }
         }
 
         private bool GetTypeInfo(in Type type, out TypeInfo typeInfo)
         {
             if (!m_TypeInfos.TryGetValue(type.GetHashCode(), out typeInfo))
             {
-                throw new Exception($"Type '{type}' is not inherit from type '{typeof(GlobalBehaviour)}'.");
+                if (Debug.isDebugBuild)
+                {
+                    Debug.LogError($"Type '{type}' is not inherit from type '{typeof(GlobalBehaviour)}'.");
+                }
+                return false;
             }
             return true;
         }
 
         internal void FixedUpdate()
         {
-            if (IsReady && UpdateMethod == BehaviourSettings.UpdateMethod.FixedUpdate)
-            { UpdateLifeCycle(); }
-            LogTryCatchEvent(FixedUpdateCallback);
+            CallUpdate(BehaviourSettings.UpdateMethod.FixedUpdate, FixedUpdateCallback);
         }
 
         internal void Update()
         {
-            if (IsReady && UpdateMethod == BehaviourSettings.UpdateMethod.Update)
-            { UpdateLifeCycle(); }
-            LogTryCatchEvent(UpdateCallback);
+            CallUpdate(BehaviourSettings.UpdateMethod.Update, UpdateCallback);
         }
 
         internal void LateUpdate()
         {
-            if (IsReady && UpdateMethod == BehaviourSettings.UpdateMethod.LateUpdate)
+            CallUpdate(BehaviourSettings.UpdateMethod.LateUpdate, LateUpdateCallback);
+        }
+
+        private void CallUpdate(in BehaviourSettings.UpdateMethod updateMethod, in Action updateCallback)
+        {
+            if (m_IsReady && UpdateMethod == updateMethod)
             { UpdateLifeCycle(); }
-            LogTryCatchEvent(LateUpdateCallback);
+            LogTryCatchEvent(updateCallback);
         }
 
 #if UNITY_EDITOR
@@ -268,32 +414,43 @@ namespace E
             }
         }
 
-        private void ClearLifeCycleQueues()
-        {
-            m_EnableQueue.Clear();
-            m_UpdateQueue.Clear();
-            m_DisableQueue.Clear();
-        }
-
         private void CheckAllLifeCycleState()
         {
             foreach (GlobalBehaviour behaviour in m_Collection)
-            { CheckLifeCycleState(behaviour); }
+            {
+                CheckLifeCycleState(behaviour, StateToCheck.All);
+            }
         }
 
-        private void CheckLifeCycleState(in GlobalBehaviour behaviour)
+        private void CheckLifeCycleState(in GlobalBehaviour behaviour,
+            in StateToCheck stateToCheck)
         {
-            bool isActived = behaviour.IsActived;
+            bool isActived;
+            try
+            {
+                isActived = behaviour.IsActived;
+            }
+            catch (Exception e)
+            {
+                if (Debug.isDebugBuild)
+                {
+                    Debug.LogException(e);
+                }
+                return;
+            }
             bool isLastActived = behaviour.IsLastActived;
-            if (!isLastActived && isActived)
+            if ((stateToCheck & StateToCheck.Enable) != 0 &&
+                !isLastActived && isActived)
             {
                 m_EnableQueue.Add(behaviour.ID);
             }
-            if (isActived)
+            if ((stateToCheck & StateToCheck.Update) != 0 &&
+                isActived)
             {
                 m_UpdateQueue.Add(behaviour.ID);
             }
-            if (isLastActived && !isActived)
+            if ((stateToCheck & StateToCheck.Disable) != 0 &&
+                isLastActived && !isActived)
             {
                 m_DisableQueue.Add(behaviour.ID);
             }
@@ -315,8 +472,18 @@ namespace E
                 GlobalBehaviour behaviour = m_Collection[id];
                 if (behaviour != null)
                 {
-                    behaviour.InernalEnable();
-                    CheckLifeCycleState(behaviour);
+                    try
+                    {
+                        behaviour.InernalEnable();
+                    }
+                    catch (Exception e)
+                    {
+                        if (Debug.isDebugBuild)
+                        {
+                            Debug.LogException(e);
+                        }
+                    }
+                    CheckLifeCycleState(behaviour, StateToCheck.UpdateAndDisable);
                 }
                 index++;
             }
@@ -331,8 +498,18 @@ namespace E
                 GlobalBehaviour behaviour = m_Collection[id];
                 if (behaviour != null)
                 {
-                    behaviour.InternalUpdate();
-                    CheckLifeCycleState(behaviour);
+                    try
+                    {
+                        behaviour.InternalUpdate();
+                    }
+                    catch (Exception e)
+                    {
+                        if (Debug.isDebugBuild)
+                        {
+                            Debug.LogException(e);
+                        }
+                    }
+                    CheckLifeCycleState(behaviour, StateToCheck.Disable);
                 }
                 index++;
             }
@@ -347,8 +524,17 @@ namespace E
                 GlobalBehaviour behaviour = m_Collection[id];
                 if (behaviour != null)
                 {
-                    behaviour.InternalDisable();
-                    CheckLifeCycleState(behaviour);
+                    try
+                    {
+                        behaviour.InternalDisable();
+                    }
+                    catch (Exception e)
+                    {
+                        if (Debug.isDebugBuild)
+                        {
+                            Debug.LogException(e);
+                        }
+                    }
                 }
                 index++;
             }

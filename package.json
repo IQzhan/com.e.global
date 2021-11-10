@@ -1,12 +1,10 @@
 {
   "name": "com.e.global",
   "displayName": "Global",
-  "description": "",
-  "version": "0.0.1",
+  "type": "library",
+  "version": "1.0.0",
   "unity": "2019.3",
   "license": "MIT",
-  "dependencies": {
-  },
   "keywords": [
     "behaviour",
     "global",
