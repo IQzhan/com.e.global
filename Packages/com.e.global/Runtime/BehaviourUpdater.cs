@@ -5,25 +5,27 @@ namespace E
     [ExecuteAlways, Singleton(Name = "Behaviour Updater", Persistent = true)]
     public class BehaviourUpdater : Singleton<BehaviourUpdater>
     {
+        internal BehaviourManager manager;
+
         private void FixedUpdate()
         {
-            BehaviourManager.Instance.FixedUpdate();
+            manager?.FixedUpdate();
         }
 
         private void Update()
         {
-            BehaviourManager.Instance.Update();
+            manager?.Update();
         }
 
         private void LateUpdate()
         {
-            BehaviourManager.Instance.LateUpdate();
+            manager?.LateUpdate();
         }
 
 #if UNITY_EDITOR
         private void OnDrawGizmos()
         {
-            BehaviourManager.Instance.OnDrawGizmos();
+            manager?.OnDrawGizmos();
         }
 #endif
     }

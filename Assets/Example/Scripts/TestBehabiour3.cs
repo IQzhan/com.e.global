@@ -1,6 +1,6 @@
 ﻿namespace E
 {
-    public class Fucker : GlobalBehaviour
+    public class TestBehabiour3 : GlobalBehaviour
     {
         protected override bool IsEnabled => true;
     }
