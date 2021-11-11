@@ -10,7 +10,7 @@ namespace E
         {
             Debug.Log("Begin");
             BehaviourManager.OnDrawGizmosCallback += OnDrawGizmosCallback;
-
+            
         }
 
         private static void OnDrawGizmosCallback()

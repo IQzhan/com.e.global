@@ -11,22 +11,31 @@ namespace E
             FixedUpdate
         }
 
-        private static BehaviourSettings instance;
+        private static BehaviourSettings m_Instance;
 
-        public static BehaviourSettings Instance
+        private static BehaviourSettings Instance
         {
             get
             {
-                if (instance == null)
+                if(m_Instance == null)
                 {
-                    instance = BehaviourUtility.Load<BehaviourSettings>(BehaviourUtility.SettingsName);
+#if UNITY_EDITOR
+                    BehaviourUtility.CreateAssetIfNotExists<BehaviourSettings>();
+#endif
+                    m_Instance = BehaviourUtility.Load<BehaviourSettings>();
                 }
-                return instance;
+                return m_Instance;
             }
         }
 
-        public float deltaTime;
+        public static float DeltaTime { get => Instance.m_DeltaTime; set => Instance.m_DeltaTime = value; }
 
-        public UpdateMethod updateMethod = UpdateMethod.Update;
+        public static UpdateMethod Method { get => Instance.m_Method; set => Instance.m_Method = value; }
+
+        [SerializeField]
+        private float m_DeltaTime;
+
+        [SerializeField]
+        private UpdateMethod m_Method = UpdateMethod.Update;
     }
 }

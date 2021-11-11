@@ -14,9 +14,9 @@ namespace E
 
         public static bool IsReady { get => m_Instance.m_IsReady; }
 
-        public static BehaviourSettings.UpdateMethod UpdateMethod { get => BehaviourSettings.Instance.updateMethod; }
+        public static BehaviourSettings.UpdateMethod UpdateMethod { get => BehaviourSettings.Method; }
 
-        public static float DeltaTime { get => BehaviourSettings.Instance.deltaTime; }
+        public static float DeltaTime { get => BehaviourSettings.DeltaTime; }
 
         public static BehaviourUpdater MonoBehaviour { get => BehaviourUpdater.Instance; }
 
@@ -123,7 +123,6 @@ namespace E
 
         private static void OnPlayModeStateChanged(PlayModeStateChange stateChange)
         {
-            Debug.Log("stateChange");
             switch (stateChange)
             {
                 case PlayModeStateChange.EnteredEditMode:
@@ -143,6 +142,7 @@ namespace E
         private static void InitializeOnLoadInRuntime()
         {
             m_Instance.FirstAccess();
+            BehaviourUpdater.Instance.manager = m_Instance;
         }
 
         private void Initialize()
@@ -152,8 +152,6 @@ namespace E
                 ClearCallbacks();
                 CreateLifeCycleQueues();
                 CreateCollection();
-                BehaviourUpdater.CreateInstance();
-                BehaviourUpdater.Instance.manager = this;
             }
             catch (Exception e)
             {

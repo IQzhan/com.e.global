@@ -2,7 +2,12 @@
 
 namespace E
 {
-    [ExecuteAlways, Singleton(Name = "Behaviour Updater", Persistent = true)]
+    [ExecuteAlways]
+    [AddComponentMenu("")]
+    [Singleton(
+        Name = "Behaviour Updater",
+        Persistent = true,
+        HideFlags = HideFlags.HideInInspector)]
     public sealed partial class BehaviourUpdater : Singleton<BehaviourUpdater>
     {
         internal BehaviourManager manager;
