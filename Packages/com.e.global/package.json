@@ -1,0 +1,18 @@
+{
+  "name": "com.e.global",
+  "displayName": "Global",
+  "type": "library",
+  "version": "1.0.0",
+  "unity": "2019.3",
+  "license": "MIT",
+  "keywords": [
+    "behaviour",
+    "global",
+    "update",
+    "system"
+  ],
+  "author": {
+    "name": "ZhanQI"
+  },
+  "hideInEditor": false
+}
