@@ -1,14 +1,14 @@
-﻿using UnityEngine;
-
-namespace E
+﻿namespace E
 {
     public abstract partial class GlobalBehaviour
     {
         public int ID { get; internal set; } = -1;
 
+        internal int typeHashCode;
+
         public bool IsExecuteInEditorMode { get; internal set; } = false;
 
-        public bool IsAlive { get => Application.isPlaying || IsExecuteInEditorMode; }
+        public bool IsAlive { get => Utility.IsPlaying || IsExecuteInEditorMode; }
 
         public bool IsAwaked { get; private set; } = false;
 
