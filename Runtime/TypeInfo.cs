@@ -8,6 +8,7 @@ namespace E
         public TypeInfo(in Type type)
         {
             this.type = type;
+            typeHashCode = type.GetHashCode();
             object[] attris = type.GetCustomAttributes(typeof(ExecuteInEditMode), true);
             if (attris.Length == 0)
             { attris = type.GetCustomAttributes(typeof(ExecuteAlways), true); }
@@ -26,6 +27,8 @@ namespace E
         }
 
         public Type type;
+
+        internal int typeHashCode;
 
         public bool isExecuteInEditorMode;
 

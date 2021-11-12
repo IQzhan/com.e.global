@@ -137,9 +137,9 @@ namespace E
                     m_Instance = thisOne;
                     KeepAlive(thisOne);
                     hideFlags = m_Attribute.HideFlags;
-                    if (Debug.isDebugBuild)
+                    if (Utility.AllowLog)
                     {
-                        Debug.Log($"{InstanceName} Loaded in {PlatformMode}.");
+                        Utility.Log($"{InstanceName} Loaded in {PlatformMode}.");
                     }
                 }
             }

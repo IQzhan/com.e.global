@@ -1,11 +1,12 @@
-using UnityEditor;
-#if UNITY_EDITOR
+using System;
 using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
 #endif
 
 namespace E
 {
-    internal class BehaviourUtility
+    internal static class Utility
     {
 #if UNITY_EDITOR
         public static void CreateAssetIfNotExists<T>() where T : ScriptableObject
@@ -29,7 +30,7 @@ namespace E
         }
 #endif
 
-        public static T Load<T>() where T : Object
+        public static T Load<T>() where T : UnityEngine.Object
         {
 #if UNITY_EDITOR
             string[] guids = AssetDatabase.FindAssets($"t: {typeof(T).FullName}");
@@ -41,6 +42,25 @@ namespace E
 #else
             return Resources.Load<T>(typeof(T).Name);
 #endif
+        }
+
+        public static bool IsPlaying { get => Application.isPlaying; }
+
+        public static bool AllowLog { get => Debug.isDebugBuild; }
+
+        public static void Log(string message)
+        {
+            Debug.Log(message);
+        }
+
+        public static void LogError(string message)
+        {
+            Debug.LogError(message);
+        }
+
+        public static void LogException(Exception e)
+        {
+            Debug.LogException(e);
         }
     }
 }
