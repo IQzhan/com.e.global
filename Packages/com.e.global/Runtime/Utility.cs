@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using System.Threading;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -8,6 +9,14 @@ namespace E
 {
     internal static class Utility
     {
+        private static int m_GlobalIDOrder = 0;
+
+        internal static uint UniqueGlobalID()
+        {
+            Interlocked.Add(ref m_GlobalIDOrder, 1);
+            return (uint)m_GlobalIDOrder;
+        }
+
 #if UNITY_EDITOR
         public static void CreateAssetIfNotExists<T>() where T : ScriptableObject
         {

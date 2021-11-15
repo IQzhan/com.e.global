@@ -14,5 +14,8 @@
   "author": {
     "name": "ZhanQI"
   },
-  "hideInEditor": false
+  "hideInEditor": false,
+  "dependencies": {
+    "com.unity.collections": ""
+  }
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 
@@ -13,6 +14,7 @@ namespace E
             BehaviourManager.OnDrawGizmosCallback += OnDrawGizmosCallback;
             //TestCreateInstance testCreateInstance = Activator.CreateInstance(typeof(TestCreateInstance), false) as TestCreateInstance;
             //TestCreateInstance a = new TestCreateInstance();
+            Debug.Log($"{uint.MaxValue} {int.MaxValue}");
         }
 
         private static void OnDrawGizmosCallback()
@@ -20,22 +22,5 @@ namespace E
             Handles.DrawLine(Vector3.one, Vector3.one * 2 + Vector3.forward * 3);
         }
 
-        private class InstBase
-        {
-            public InstBase() { }
-        }
-        
-        private class TestCreateInstance : InstBase
-        {
-            //private TestCreateInstance()
-            //{
-            //    Debug.LogError("TestCreateInstance");
-            //}
-
-            public TestCreateInstance(int a, int b)
-            {
-
-            }
-        }
     }
 }

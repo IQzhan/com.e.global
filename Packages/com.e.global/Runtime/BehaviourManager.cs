@@ -151,7 +151,6 @@ namespace E
             {
                 ClearCallbacks();
                 CreateLifeCycleQueues();
-                CreateCollection();
             }
             catch (Exception e)
             {
@@ -245,6 +244,7 @@ namespace E
                 .Select(t => new TypeInfo(t));
             if (ResetTypeInfosCallback != null)
             { typeInfos = ResetTypeInfosCallback(typeInfos); }
+            m_Collection = new BehaviourCollection(typeInfos);
             m_TypeInfos = new SortedList<int, TypeInfo>
                 (typeInfos.ToDictionary(i => i.typeHashCode));
         }
@@ -264,11 +264,6 @@ namespace E
             if (m_TypeInfos == null) return;
             m_TypeInfos.Clear();
             m_TypeInfos = null;
-        }
-
-        private void CreateCollection()
-        {
-            m_Collection = new BehaviourCollection();
         }
 
         private void ReleaseCollection()
@@ -383,7 +378,7 @@ namespace E
             }
             else
             {
-                behaviour = Activator.CreateInstance(typeInfo.type) as GlobalBehaviour;
+                behaviour = Activator.CreateInstance(typeInfo.type, true) as GlobalBehaviour;
             }
             behaviour.typeHashCode = typeInfo.typeHashCode;
             behaviour.IsExecuteInEditorMode = typeInfo.isExecuteInEditorMode;

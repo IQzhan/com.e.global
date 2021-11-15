@@ -1,15 +1,17 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace E
 {
     internal class BehaviourCollection : IEnumerable<GlobalBehaviour>, IEnumerable
     {
-        public BehaviourCollection()
+        public BehaviourCollection(IEnumerable<TypeInfo> typeInfos)
         {
             linkFactory = new LinkFactory<GlobalBehaviour>();
-            typeLinks = new SortedList<int, LinkFactory<GlobalBehaviour>.Address>();
+            typeLinks = new SortedList<int, LinkFactory<GlobalBehaviour>.Address>(typeInfos
+                .ToDictionary(info => info.typeHashCode, info => linkFactory.RequireNewLink()));
         }
 
         private readonly LinkFactory<GlobalBehaviour> linkFactory;
@@ -21,7 +23,7 @@ namespace E
 
         public void Add(in GlobalBehaviour value)
         {
-            if(value.ID != -1)
+            if (value.ID != -1)
             {
                 if (Utility.AllowLog)
                 {
@@ -29,14 +31,14 @@ namespace E
                 }
                 return;
             }
-            GetTypeLink(value.typeHashCode, out LinkFactory<GlobalBehaviour>.Address typelink);
+            var typelink = typeLinks[value.typeHashCode];
             value.ID = linkFactory.Add(ref typelink, value);
-            SetTypeLink(value.typeHashCode, typelink);
+            typeLinks[value.typeHashCode] = typelink;
         }
 
         public void Remove(in GlobalBehaviour value)
         {
-            if(value.ID == -1)
+            if (value.ID == -1)
             {
                 if (Utility.AllowLog)
                 {
@@ -44,26 +46,26 @@ namespace E
                 }
                 return;
             }
-            GetTypeLink(value.typeHashCode, out LinkFactory<GlobalBehaviour>.Address typelink);
+            var typelink = typeLinks[value.typeHashCode];
             linkFactory.Remove(ref typelink, value.ID);
-            SetTypeLink(value.typeHashCode, typelink);
+            typeLinks[value.typeHashCode] = typelink;
         }
 
         public GlobalBehaviour Get(int typeHashCode)
         {
-            GetTypeLink(typeHashCode, out LinkFactory<GlobalBehaviour>.Address typelink);
+            var typelink = typeLinks[typeHashCode];
             return linkFactory.Get(typelink.first);
         }
 
         public GlobalBehaviour[] Gets(int typeHashCode)
         {
-            GetTypeLink(typeHashCode, out LinkFactory<GlobalBehaviour>.Address typelink);
+            var typelink = typeLinks[typeHashCode];
             return linkFactory.Gets<GlobalBehaviour>(typelink.first);
         }
 
         public T[] Gets<T>(int typeHashCode) where T : GlobalBehaviour
         {
-            GetTypeLink(typeHashCode, out LinkFactory<GlobalBehaviour>.Address typelink);
+            var typelink = typeLinks[typeHashCode];
             return linkFactory.Gets<T>(typelink.first);
         }
 
@@ -71,20 +73,6 @@ namespace E
         {
             linkFactory.Clear();
             typeLinks.Clear();
-        }
-
-        private void GetTypeLink(int hashCode, out LinkFactory<GlobalBehaviour>.Address typelink)
-        {
-            if (!typeLinks.TryGetValue(hashCode, out typelink))
-            {
-                typelink = linkFactory.RequireNewLink();
-                typeLinks.Add(hashCode, typelink);
-            }
-        }
-
-        private void SetTypeLink(int hashCode, in LinkFactory<GlobalBehaviour>.Address typelink)
-        {
-            typeLinks[hashCode] = typelink;
         }
 
         #region Enumerator
