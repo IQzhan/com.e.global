@@ -23,16 +23,19 @@ namespace E
             string[] guids = AssetDatabase.FindAssets($"t: {typeof(T).FullName}");
             if (guids.Length == 0)
             {
+                string assetsFolderStr = "Assets";
+                string settingsFolderStr = "Global Settings";
+                string resourcesStr = "Resources";
                 T inst = ScriptableObject.CreateInstance<T>();
-                if (!AssetDatabase.IsValidFolder("Assets/Global Settings"))
+                if (!AssetDatabase.IsValidFolder($"{assetsFolderStr}/{settingsFolderStr}"))
                 {
-                    AssetDatabase.CreateFolder("Assets", "Global Settings");
+                    AssetDatabase.CreateFolder(assetsFolderStr, settingsFolderStr);
                 }
-                if (!AssetDatabase.IsValidFolder("Assets/Global Settings/Resources"))
+                if (!AssetDatabase.IsValidFolder($"{assetsFolderStr}/{settingsFolderStr}/{resourcesStr}"))
                 {
-                    AssetDatabase.CreateFolder("Assets/Global Settings", "Resources");
+                    AssetDatabase.CreateFolder($"{assetsFolderStr}/{settingsFolderStr}", resourcesStr);
                 }
-                AssetDatabase.CreateAsset(inst, $"Assets/Global Settings/Resources/{typeof(T).Name}.asset");
+                AssetDatabase.CreateAsset(inst, $"{assetsFolderStr}/{settingsFolderStr}/{resourcesStr}/{typeof(T).Name}.asset");
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
             }
