@@ -11,7 +11,7 @@ namespace E
     {
         private static int m_GlobalIDOrder = 0;
 
-        internal static uint UniqueGlobalID()
+        internal static unsafe uint UniqueGlobalID()
         {
             Interlocked.Add(ref m_GlobalIDOrder, 1);
             return (uint)m_GlobalIDOrder;
