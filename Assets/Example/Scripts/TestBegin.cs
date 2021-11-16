@@ -1,4 +1,6 @@
-﻿using UnityEditor;
+﻿using System;
+using System.Reflection;
+using UnityEditor;
 using UnityEngine;
 
 namespace E
@@ -10,12 +12,15 @@ namespace E
         {
             Debug.Log("Begin");
             BehaviourManager.OnDrawGizmosCallback += OnDrawGizmosCallback;
-            
+
+
         }
+
 
         private static void OnDrawGizmosCallback()
         {
             Handles.DrawLine(Vector3.one, Vector3.one * 2 + Vector3.forward * 3);
         }
+
     }
 }

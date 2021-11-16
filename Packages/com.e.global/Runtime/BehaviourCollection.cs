@@ -1,15 +1,17 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace E
 {
     internal class BehaviourCollection : IEnumerable<GlobalBehaviour>, IEnumerable
     {
-        public BehaviourCollection()
+        public BehaviourCollection(IEnumerable<TypeInfo> typeInfos)
         {
             linkFactory = new LinkFactory<GlobalBehaviour>();
-            typeLinks = new SortedList<int, LinkFactory<GlobalBehaviour>.Address>();
+            typeLinks = new SortedList<int, LinkFactory<GlobalBehaviour>.Address>(typeInfos
+                .ToDictionary(info => info.typeHashCode, info => linkFactory.RequireNewLink()));
         }
 
         private readonly LinkFactory<GlobalBehaviour> linkFactory;
@@ -21,54 +23,56 @@ namespace E
 
         public void Add(in GlobalBehaviour value)
         {
-            Type type = value.GetType();
-            int hashCode = type.GetHashCode();
-            GetTypeLink(hashCode, out LinkFactory<GlobalBehaviour>.Address typelink);
+            if (value.ID != -1)
+            {
+                if (Utility.AllowLog)
+                {
+                    Utility.LogError($"This instance of type '{value.GetType()}' has already created.");
+                }
+                return;
+            }
+            var typelink = typeLinks[value.typeHashCode];
             value.ID = linkFactory.Add(ref typelink, value);
-            SetTypeLink(hashCode, typelink);
+            typeLinks[value.typeHashCode] = typelink;
         }
 
         public void Remove(in GlobalBehaviour value)
         {
-            Type type = value.GetType();
-            int hashCode = type.GetHashCode();
-            GetTypeLink(hashCode, out LinkFactory<GlobalBehaviour>.Address typelink);
+            if (value.ID == -1)
+            {
+                if (Utility.AllowLog)
+                {
+                    Utility.LogError($"This instance of type '{value.GetType()}' was not created by BehaviourManager.CreateInstance().");
+                }
+                return;
+            }
+            var typelink = typeLinks[value.typeHashCode];
             linkFactory.Remove(ref typelink, value.ID);
-            SetTypeLink(hashCode, typelink);
+            typeLinks[value.typeHashCode] = typelink;
         }
 
-        public GlobalBehaviour Get(in Type type)
+        public GlobalBehaviour Get(int typeHashCode)
         {
-            int hashCode = type.GetHashCode();
-            GetTypeLink(hashCode, out LinkFactory<GlobalBehaviour>.Address typelink);
+            var typelink = typeLinks[typeHashCode];
             return linkFactory.Get(typelink.first);
         }
 
-        public GlobalBehaviour[] Gets(in Type type)
+        public GlobalBehaviour[] Gets(int typeHashCode)
         {
-            int hashCode = type.GetHashCode();
-            GetTypeLink(hashCode, out LinkFactory<GlobalBehaviour>.Address typelink);
-            return linkFactory.Gets(typelink.first);
+            var typelink = typeLinks[typeHashCode];
+            return linkFactory.Gets<GlobalBehaviour>(typelink.first);
+        }
+
+        public T[] Gets<T>(int typeHashCode) where T : GlobalBehaviour
+        {
+            var typelink = typeLinks[typeHashCode];
+            return linkFactory.Gets<T>(typelink.first);
         }
 
         public void Clear()
         {
             linkFactory.Clear();
             typeLinks.Clear();
-        }
-
-        private void GetTypeLink(in int hashCode, out LinkFactory<GlobalBehaviour>.Address typelink)
-        {
-            if (!typeLinks.TryGetValue(hashCode, out typelink))
-            {
-                typelink = linkFactory.RequireNewLink();
-                typeLinks.Add(hashCode, typelink);
-            }
-        }
-
-        private void SetTypeLink(in int hashCode, in LinkFactory<GlobalBehaviour>.Address typelink)
-        {
-            typeLinks[hashCode] = typelink;
         }
 
         #region Enumerator
@@ -146,9 +150,9 @@ namespace E
 
             private interface INodeSetter
             {
-                void SetPrev(ref Node node, in int addr);
+                void SetPrev(ref Node node, int addr);
 
-                void SetNext(ref Node node, in int addr);
+                void SetNext(ref Node node, int addr);
 
                 int GetPrev(in Node node);
 
@@ -167,12 +171,12 @@ namespace E
                     return node.prev;
                 }
 
-                public void SetNext(ref Node node, in int addr)
+                public void SetNext(ref Node node, int addr)
                 {
                     node.prev = addr;
                 }
 
-                public void SetPrev(ref Node node, in int addr)
+                public void SetPrev(ref Node node, int addr)
                 {
                     node.next = addr;
                 }
@@ -190,12 +194,12 @@ namespace E
                     return node.addressPrev;
                 }
 
-                public void SetNext(ref Node node, in int addr)
+                public void SetNext(ref Node node, int addr)
                 {
                     node.addressPrev = addr;
                 }
 
-                public void SetPrev(ref Node node, in int addr)
+                public void SetPrev(ref Node node, int addr)
                 {
                     node.addressNext = addr;
                 }
@@ -211,8 +215,6 @@ namespace E
 
             private MainNodeSetter m_MainNodeSetter;
 
-            private List<T> m_HelperList;
-
             public LinkFactory()
             {
                 m_Block = new List<Node>();
@@ -220,7 +222,6 @@ namespace E
                 m_Main = Address.Default;
                 m_NodeSetter = new NodeSetter();
                 m_MainNodeSetter = new MainNodeSetter();
-                m_HelperList = new List<T>();
             }
 
             public void Clear()
@@ -228,7 +229,6 @@ namespace E
                 m_Block.Clear();
                 m_Uunused.Clear();
                 m_Main = Address.Default;
-                m_HelperList.Clear();
             }
 
             public Address RequireNewLink()
@@ -236,20 +236,22 @@ namespace E
                 return Address.Default;
             }
 
-            public T[] Gets(in int address)
+            public T1[] Gets<T1>(int address) where T1 : T
             {
-                m_HelperList.Clear();
+                List<T1> helperList = UnityEngine.Pool.ListPool<T1>.Get();
+                helperList.Clear();
                 int currAddress = address;
                 while (currAddress != -1)
                 {
                     Node currNode = m_Block[currAddress];
                     if (currNode.value != null)
                     {
-                        m_HelperList.Add(currNode.value);
+                        helperList.Add((T1)currNode.value);
                     }
                     currAddress = currNode.next;
                 }
-                T[] array = m_HelperList.ToArray();
+                T1[] array = helperList.ToArray();
+                UnityEngine.Pool.ListPool<T1>.Release(helperList);
                 return array;
             }
 
@@ -262,7 +264,7 @@ namespace E
                 return default;
             }
 
-            public T GetAddressNext(in int address)
+            public T GetAddressNext(int address)
             {
                 int index = m_Block[address].addressNext;
                 if (index != -1)
@@ -272,7 +274,7 @@ namespace E
                 return default;
             }
 
-            public T Get(in int address)
+            public T Get(int address)
             {
                 if (address != -1)
                 {
@@ -281,7 +283,7 @@ namespace E
                 return default;
             }
 
-            public T GetNext(in int address)
+            public T GetNext(int address)
             {
                 int index = m_Block[address].next;
                 if (index != -1)
@@ -302,7 +304,7 @@ namespace E
                 return address;
             }
 
-            public void Remove(ref Address linkAddress, in int address)
+            public void Remove(ref Address linkAddress, int address)
             {
                 Node currNode = m_Block[address];
                 RemoveLinkNode(ref linkAddress, currNode, m_NodeSetter);
@@ -320,14 +322,14 @@ namespace E
                 return m_Uunused.Pop();
             }
 
-            private void ReleaseAddress(in int address)
+            private void ReleaseAddress(int address)
             {
                 m_Block[address] = Node.Default;
                 m_Uunused.Push(address);
             }
 
-            private void AddLinkNode<Setter>(ref Address linkAddress, in int address, ref Node node,
-                in Setter setter) where Setter : struct, INodeSetter
+            private void AddLinkNode<Setter>(ref Address linkAddress, int address, ref Node node,
+                Setter setter) where Setter : struct, INodeSetter
             {
                 if (linkAddress.first == -1 && linkAddress.last == -1)
                 {
@@ -346,7 +348,7 @@ namespace E
             }
 
             private void RemoveLinkNode<Setter>(ref Address linkAddress, in Node currNode,
-                in Setter setter) where Setter : struct, INodeSetter
+                Setter setter) where Setter : struct, INodeSetter
             {
                 int prevAddress = setter.GetPrev(currNode);
                 int nextAddress = setter.GetNext(currNode);

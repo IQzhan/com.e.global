@@ -151,13 +151,12 @@ namespace E
             {
                 ClearCallbacks();
                 CreateLifeCycleQueues();
-                CreateCollection();
             }
             catch (Exception e)
             {
-                if (Debug.isDebugBuild)
+                if (Utility.AllowLog)
                 {
-                    Debug.LogException(e);
+                    Utility.LogException(e);
                 }
                 return;
             }
@@ -176,9 +175,9 @@ namespace E
             }
             catch (Exception e)
             {
-                if (Debug.isDebugBuild)
+                if (Utility.AllowLog)
                 {
-                    Debug.LogException(e);
+                    Utility.LogException(e);
                 }
                 return;
             }
@@ -189,49 +188,65 @@ namespace E
             try
             {
                 if (m_IsReady) return;
-                ExecuteBefore();
-                CreateTypeInfos();
+                IEnumerable<Type> types = GetAllTypes();
+                ExecuteBefore(types);
+                CreateTypeInfos(types);
                 AutoCreateInstances();
                 m_IsReady = true;
             }
             catch (Exception e)
             {
-                if (Debug.isDebugBuild)
+                if (Utility.AllowLog)
                 {
-                    Debug.LogException(e);
+                    Utility.LogException(e);
                 }
             }
         }
 
-        private void ExecuteBefore()
+        private IEnumerable<Type> GetAllTypes()
+        {
+            return AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes());
+        }
+
+        private void ExecuteBefore(IEnumerable<Type> allTypes)
         {
             Type attrType = typeof(InitializeBeforeAllBehavioursMethodAttribute);
-            var methods = AppDomain.CurrentDomain.GetAssemblies()
-                .SelectMany(a => a.GetTypes()
+            var methods = allTypes
                 .SelectMany(t => t.GetMethods()
                 .Where(m => m.IsStatic && !m.IsGenericMethod && !m.IsConstructor &&
                 (m.GetCustomAttributes(attrType, true).FirstOrDefault() is InitializeBeforeAllBehavioursMethodAttribute) &&
-                (m.GetParameters().Length == 0))));
+                (m.GetParameters().Length == 0)));
             var paramObjs = new object[0];
             foreach (var method in methods)
-            { method.Invoke(null, paramObjs); }
+            {
+                try
+                {
+                    method.Invoke(null, paramObjs);
+                }
+                catch (Exception e)
+                {
+                    if (Utility.AllowLog)
+                    {
+                        Utility.LogException(e);
+                    }
+                }
+            }
         }
 
-        private void CreateTypeInfos()
+        private void CreateTypeInfos(IEnumerable<Type> allTypes)
         {
             var baseType = typeof(GlobalBehaviour);
-            IEnumerable<TypeInfo> typeInfos =
-                AppDomain.CurrentDomain.GetAssemblies()
-                .SelectMany(a => a.GetTypes()
+            IEnumerable<TypeInfo> typeInfos = allTypes
                 .Where(t => baseType.IsAssignableFrom(t) &&
                 t.IsClass &&
                 !t.IsAbstract &&
                 !t.IsGenericType)
-                .Select(t => new TypeInfo(t)));
+                .Select(t => new TypeInfo(t));
             if (ResetTypeInfosCallback != null)
             { typeInfos = ResetTypeInfosCallback(typeInfos); }
+            m_Collection = new BehaviourCollection(typeInfos);
             m_TypeInfos = new SortedList<int, TypeInfo>
-                (typeInfos.ToDictionary(i => i.type.GetHashCode()));
+                (typeInfos.ToDictionary(i => i.typeHashCode));
         }
 
         private void AutoCreateInstances()
@@ -251,11 +266,6 @@ namespace E
             m_TypeInfos = null;
         }
 
-        private void CreateCollection()
-        {
-            m_Collection = new BehaviourCollection();
-        }
-
         private void ReleaseCollection()
         {
             if (m_Collection == null) return;
@@ -267,9 +277,9 @@ namespace E
                 }
                 catch (Exception e)
                 {
-                    if (Debug.isDebugBuild)
+                    if (Utility.AllowLog)
                     {
-                        Debug.LogException(e);
+                        Utility.LogException(e);
                     }
                 }
             }
@@ -330,21 +340,29 @@ namespace E
 
         private GlobalBehaviour InternalCreateInstance(in Type type)
         {
-            if (!GetTypeInfo(type, out TypeInfo typeInfo)) return null;
+            int typeHashCode = type.GetHashCode();
+            if (!GetTypeInfo(typeHashCode, out TypeInfo typeInfo)) return null;
             GlobalBehaviour behaviour;
             try
             {
                 behaviour = CreateInstanceByTypeInfo(typeInfo);
-                if (behaviour == null) return null;
+                if (behaviour == null)
+                {
+                    if (Utility.AllowLog)
+                    {
+                        Utility.LogError($"Create GlobalBehaviour of type '{type}' faild.");
+                    }
+                    return null;
+                }
                 m_Collection.Add(behaviour);
                 behaviour.InernalAwake();
                 CheckLifeCycleState(behaviour, StateToCheck.All);
             }
             catch (Exception e)
             {
-                if (Debug.isDebugBuild)
+                if (Utility.AllowLog)
                 {
-                    Debug.LogException(e);
+                    Utility.LogException(e);
                 }
                 return null;
             }
@@ -353,11 +371,16 @@ namespace E
 
         private GlobalBehaviour CreateInstanceByTypeInfo(in TypeInfo typeInfo)
         {
+            GlobalBehaviour behaviour;
             if (OverrideCreateInstanceCallback != null)
             {
-                return OverrideCreateInstanceCallback(typeInfo);
+                behaviour = OverrideCreateInstanceCallback(typeInfo);
             }
-            GlobalBehaviour behaviour = Activator.CreateInstance(typeInfo.type) as GlobalBehaviour;
+            else
+            {
+                behaviour = Activator.CreateInstance(typeInfo.type, true) as GlobalBehaviour;
+            }
+            behaviour.typeHashCode = typeInfo.typeHashCode;
             behaviour.IsExecuteInEditorMode = typeInfo.isExecuteInEditorMode;
             return behaviour;
         }
@@ -369,24 +392,28 @@ namespace E
 
         private GlobalBehaviour InternalGetInstance(in Type type)
         {
-            if (!GetTypeInfo(type, out TypeInfo _)) return null;
-            return m_Collection.Get(type);
+            int typeHashCode = type.GetHashCode();
+            if (!GetTypeInfo(typeHashCode, out TypeInfo _)) return null;
+            return m_Collection.Get(typeHashCode);
         }
 
         private T[] InternalGetInstances<T>() where T : GlobalBehaviour
         {
-            return InternalGetInstances(typeof(T)).Cast<T>().ToArray();
+            int typeHashCode = typeof(T).GetHashCode();
+            if (!GetTypeInfo(typeHashCode, out TypeInfo _)) return null;
+            return m_Collection.Gets<T>(typeHashCode);
         }
 
         private GlobalBehaviour[] InternalGetInstances(in Type type)
         {
-            if (!GetTypeInfo(type, out TypeInfo _)) return null;
-            return m_Collection.Gets(type);
+            int typeHashCode = type.GetHashCode();
+            if (!GetTypeInfo(typeHashCode, out TypeInfo _)) return null;
+            return m_Collection.Gets(typeHashCode);
         }
 
         private void InternalDestroyInstance(in GlobalBehaviour behaviour)
         {
-            if (!GetTypeInfo(behaviour.GetType(), out TypeInfo _)) return;
+            if (!GetTypeInfo(behaviour.typeHashCode, out TypeInfo _)) return;
             try
             {
                 behaviour.InternalDestroy();
@@ -394,20 +421,20 @@ namespace E
             }
             catch (Exception e)
             {
-                if (Debug.isDebugBuild)
+                if (Utility.AllowLog)
                 {
-                    Debug.LogException(e);
+                    Utility.LogException(e);
                 }
             }
         }
 
-        private bool GetTypeInfo(in Type type, out TypeInfo typeInfo)
+        private bool GetTypeInfo(int typeHashCode, out TypeInfo typeInfo)
         {
-            if (!m_TypeInfos.TryGetValue(type.GetHashCode(), out typeInfo))
+            if (!m_TypeInfos.TryGetValue(typeHashCode, out typeInfo))
             {
-                if (Debug.isDebugBuild)
+                if (Utility.AllowLog)
                 {
-                    Debug.LogError($"Type '{type}' is not inherit from type '{typeof(GlobalBehaviour)}'.");
+                    Utility.LogError($"Type '{typeInfo.type}' is not inherit from type '{typeof(GlobalBehaviour)}'.");
                 }
                 return false;
             }
@@ -429,7 +456,7 @@ namespace E
             CallUpdate(BehaviourSettings.UpdateMethod.LateUpdate, LateUpdateCallback);
         }
 
-        private void CallUpdate(in BehaviourSettings.UpdateMethod updateMethod, in Action updateCallback)
+        private void CallUpdate(BehaviourSettings.UpdateMethod updateMethod, in Action updateCallback)
         {
             if (m_IsReady && UpdateMethod == updateMethod)
             { UpdateLifeCycle(); }
@@ -451,9 +478,9 @@ namespace E
             }
             catch (Exception e)
             {
-                if (Debug.isDebugBuild)
+                if (Utility.AllowLog)
                 {
-                    Debug.LogException(e);
+                    Utility.LogException(e);
                 }
             }
         }
@@ -477,8 +504,7 @@ namespace E
             }
         }
 
-        private void CheckLifeCycleState(in GlobalBehaviour behaviour,
-            in StateToCheck stateToCheck)
+        private void CheckLifeCycleState(in GlobalBehaviour behaviour, StateToCheck stateToCheck)
         {
             bool isActived;
             try
@@ -487,9 +513,9 @@ namespace E
             }
             catch (Exception e)
             {
-                if (Debug.isDebugBuild)
+                if (Utility.AllowLog)
                 {
-                    Debug.LogException(e);
+                    Utility.LogException(e);
                 }
                 return;
             }
@@ -533,9 +559,9 @@ namespace E
                     }
                     catch (Exception e)
                     {
-                        if (Debug.isDebugBuild)
+                        if (Utility.AllowLog)
                         {
-                            Debug.LogException(e);
+                            Utility.LogException(e);
                         }
                     }
                     CheckLifeCycleState(behaviour, StateToCheck.UpdateAndDisable);
@@ -559,9 +585,9 @@ namespace E
                     }
                     catch (Exception e)
                     {
-                        if (Debug.isDebugBuild)
+                        if (Utility.AllowLog)
                         {
-                            Debug.LogException(e);
+                            Utility.LogException(e);
                         }
                     }
                     CheckLifeCycleState(behaviour, StateToCheck.Disable);
@@ -585,9 +611,9 @@ namespace E
                     }
                     catch (Exception e)
                     {
-                        if (Debug.isDebugBuild)
+                        if (Utility.AllowLog)
                         {
-                            Debug.LogException(e);
+                            Utility.LogException(e);
                         }
                     }
                 }

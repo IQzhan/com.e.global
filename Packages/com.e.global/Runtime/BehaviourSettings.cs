@@ -20,9 +20,9 @@ namespace E
                 if(m_Instance == null)
                 {
 #if UNITY_EDITOR
-                    BehaviourUtility.CreateAssetIfNotExists<BehaviourSettings>();
+                    Utility.CreateAssetIfNotExists<BehaviourSettings>();
 #endif
-                    m_Instance = BehaviourUtility.Load<BehaviourSettings>();
+                    m_Instance = Utility.Load<BehaviourSettings>();
                 }
                 return m_Instance;
             }
