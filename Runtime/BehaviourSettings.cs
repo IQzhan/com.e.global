@@ -17,7 +17,7 @@ namespace E
         {
             get
             {
-                if(m_Instance == null)
+                if (m_Instance == null)
                 {
 #if UNITY_EDITOR
                     Utility.CreateAssetIfNotExists<BehaviourSettings>();
@@ -32,10 +32,20 @@ namespace E
 
         public static UpdateMethod Method { get => Instance.m_Method; set => Instance.m_Method = value; }
 
+        public static bool AllowLog { get => Instance.m_AllowLog; set => Instance.m_AllowLog = value; }
+
+        public static bool AllowLogError { get => Instance.m_AllowLogError; set => Instance.m_AllowLogError = value; }
+
         [SerializeField]
-        private float m_DeltaTime;
+        private float m_DeltaTime = 1f / 130f;
 
         [SerializeField]
         private UpdateMethod m_Method = UpdateMethod.Update;
+
+        [SerializeField]
+        private bool m_AllowLog = false;
+
+        [SerializeField]
+        private bool m_AllowLogError = true;
     }
 }
