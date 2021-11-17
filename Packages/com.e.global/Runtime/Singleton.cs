@@ -170,13 +170,7 @@ namespace E
             }
         }
 
-        private string PlatformMode
-        {
-            get
-            {
-                return Application.isPlaying ? "playing mode" : "editor mode";
-            }
-        }
+        private string PlatformMode { get => Application.isPlaying ? "playing mode" : "editor mode"; }
 
         private void KeepAlive(T instance)
         {

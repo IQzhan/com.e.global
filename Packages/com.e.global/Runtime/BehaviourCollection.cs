@@ -11,7 +11,7 @@ namespace E
         {
             linkFactory = new LinkFactory<GlobalBehaviour>();
             typeLinks = new SortedList<int, LinkFactory<GlobalBehaviour>.Address>(typeInfos
-                .ToDictionary(info => info.typeHashCode, info => linkFactory.RequireNewLink()));
+                .ToDictionary(info => info.TypeHashCode, info => linkFactory.RequireNewLink()));
         }
 
         private readonly LinkFactory<GlobalBehaviour> linkFactory;
@@ -25,7 +25,7 @@ namespace E
         {
             if (value.ID != -1)
             {
-                if (Utility.AllowLog)
+                if (Utility.AllowLogError)
                 {
                     Utility.LogError($"This instance of type '{value.GetType()}' has already created.");
                 }
@@ -40,7 +40,7 @@ namespace E
         {
             if (value.ID == -1)
             {
-                if (Utility.AllowLog)
+                if (Utility.AllowLogError)
                 {
                     Utility.LogError($"This instance of type '{value.GetType()}' was not created by BehaviourManager.CreateInstance().");
                 }
