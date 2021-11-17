@@ -37,13 +37,13 @@ namespace E
 
         #region Private properties
 
+        private static BehaviourManager m_Instance;
+
         private bool m_IsReady;
 
         private SortedList<int, TypeInfo> m_TypeInfos;
 
         private BehaviourCollection m_Collection;
-
-        private static BehaviourManager m_Instance;
 
         private double m_LastTime;
 
@@ -154,7 +154,7 @@ namespace E
             }
             catch (Exception e)
             {
-                if (Utility.AllowLog)
+                if (Utility.AllowLogError)
                 {
                     Utility.LogException(e);
                 }
@@ -175,7 +175,7 @@ namespace E
             }
             catch (Exception e)
             {
-                if (Utility.AllowLog)
+                if (Utility.AllowLogError)
                 {
                     Utility.LogException(e);
                 }
@@ -196,7 +196,7 @@ namespace E
             }
             catch (Exception e)
             {
-                if (Utility.AllowLog)
+                if (Utility.AllowLogError)
                 {
                     Utility.LogException(e);
                 }
@@ -225,7 +225,7 @@ namespace E
                 }
                 catch (Exception e)
                 {
-                    if (Utility.AllowLog)
+                    if (Utility.AllowLogError)
                     {
                         Utility.LogException(e);
                     }
@@ -241,12 +241,14 @@ namespace E
                 t.IsClass &&
                 !t.IsAbstract &&
                 !t.IsGenericType)
-                .Select(t => new TypeInfo(t));
+                .Select(t => new TypeInfo(t))
+                // ToList() makes sure this linq excuted.
+                .ToList();
             if (ResetTypeInfosCallback != null)
             { typeInfos = ResetTypeInfosCallback(typeInfos); }
-            m_Collection = new BehaviourCollection(typeInfos);
             m_TypeInfos = new SortedList<int, TypeInfo>
-                (typeInfos.ToDictionary(i => i.typeHashCode));
+                (typeInfos.ToDictionary(i => i.TypeHashCode));
+            m_Collection = new BehaviourCollection(typeInfos);
         }
 
         private void AutoCreateInstances()
@@ -256,7 +258,7 @@ namespace E
                    .OrderBy(i => i.order)
                    .ToArray();
             for (int i = 0; i < autoOrder.Length; i++)
-            { InternalCreateInstance(autoOrder[i].type); }
+            { InternalCreateInstance(autoOrder[i].Value); }
         }
 
         private void ReleaseTypeInfos()
@@ -277,7 +279,7 @@ namespace E
                 }
                 catch (Exception e)
                 {
-                    if (Utility.AllowLog)
+                    if (Utility.AllowLogError)
                     {
                         Utility.LogException(e);
                     }
@@ -348,7 +350,7 @@ namespace E
                 behaviour = CreateInstanceByTypeInfo(typeInfo);
                 if (behaviour == null)
                 {
-                    if (Utility.AllowLog)
+                    if (Utility.AllowLogError)
                     {
                         Utility.LogError($"Create GlobalBehaviour of type '{type}' faild.");
                     }
@@ -360,7 +362,7 @@ namespace E
             }
             catch (Exception e)
             {
-                if (Utility.AllowLog)
+                if (Utility.AllowLogError)
                 {
                     Utility.LogException(e);
                 }
@@ -378,9 +380,9 @@ namespace E
             }
             else
             {
-                behaviour = Activator.CreateInstance(typeInfo.type, true) as GlobalBehaviour;
+                behaviour = Activator.CreateInstance(typeInfo.Value, true) as GlobalBehaviour;
             }
-            behaviour.typeHashCode = typeInfo.typeHashCode;
+            behaviour.typeHashCode = typeInfo.TypeHashCode;
             behaviour.IsExecuteInEditorMode = typeInfo.isExecuteInEditorMode;
             return behaviour;
         }
@@ -421,7 +423,7 @@ namespace E
             }
             catch (Exception e)
             {
-                if (Utility.AllowLog)
+                if (Utility.AllowLogError)
                 {
                     Utility.LogException(e);
                 }
@@ -432,9 +434,9 @@ namespace E
         {
             if (!m_TypeInfos.TryGetValue(typeHashCode, out typeInfo))
             {
-                if (Utility.AllowLog)
+                if (Utility.AllowLogError)
                 {
-                    Utility.LogError($"Type '{typeInfo.type}' is not inherit from type '{typeof(GlobalBehaviour)}'.");
+                    Utility.LogError($"Type '{typeInfo.Value}' is not inherit from type '{typeof(GlobalBehaviour)}'.");
                 }
                 return false;
             }
@@ -442,32 +444,26 @@ namespace E
         }
 
         internal void FixedUpdate()
-        {
-            CallUpdate(BehaviourSettings.UpdateMethod.FixedUpdate, FixedUpdateCallback);
-        }
+        { CallUpdate(BehaviourSettings.UpdateMethod.FixedUpdate, FixedUpdateCallback); }
 
         internal void Update()
-        {
-            CallUpdate(BehaviourSettings.UpdateMethod.Update, UpdateCallback);
-        }
+        { CallUpdate(BehaviourSettings.UpdateMethod.Update, UpdateCallback); }
 
         internal void LateUpdate()
-        {
-            CallUpdate(BehaviourSettings.UpdateMethod.LateUpdate, LateUpdateCallback);
-        }
+        { CallUpdate(BehaviourSettings.UpdateMethod.LateUpdate, LateUpdateCallback); }
 
         private void CallUpdate(BehaviourSettings.UpdateMethod updateMethod, in Action updateCallback)
         {
-            if (m_IsReady && UpdateMethod == updateMethod)
-            { UpdateLifeCycle(); }
-            LogTryCatchEvent(updateCallback);
+            if (m_IsReady)
+            {
+                if (UpdateMethod == updateMethod) UpdateLifeCycle();
+                LogTryCatchEvent(updateCallback);
+            }
         }
 
 #if UNITY_EDITOR
         internal void OnDrawGizmos()
-        {
-            LogTryCatchEvent(OnDrawGizmosCallback);
-        }
+        { LogTryCatchEvent(OnDrawGizmosCallback); }
 #endif
 
         private void LogTryCatchEvent(in Action action)
@@ -478,7 +474,7 @@ namespace E
             }
             catch (Exception e)
             {
-                if (Utility.AllowLog)
+                if (Utility.AllowLogError)
                 {
                     Utility.LogException(e);
                 }
@@ -513,7 +509,7 @@ namespace E
             }
             catch (Exception e)
             {
-                if (Utility.AllowLog)
+                if (Utility.AllowLogError)
                 {
                     Utility.LogException(e);
                 }
@@ -559,7 +555,7 @@ namespace E
                     }
                     catch (Exception e)
                     {
-                        if (Utility.AllowLog)
+                        if (Utility.AllowLogError)
                         {
                             Utility.LogException(e);
                         }
@@ -585,7 +581,7 @@ namespace E
                     }
                     catch (Exception e)
                     {
-                        if (Utility.AllowLog)
+                        if (Utility.AllowLogError)
                         {
                             Utility.LogException(e);
                         }
@@ -611,7 +607,7 @@ namespace E
                     }
                     catch (Exception e)
                     {
-                        if (Utility.AllowLog)
+                        if (Utility.AllowLogError)
                         {
                             Utility.LogException(e);
                         }

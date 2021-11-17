@@ -11,7 +11,7 @@ namespace E
     {
         private static int m_GlobalIDOrder = 0;
 
-        internal static unsafe uint UniqueGlobalID()
+        internal static unsafe uint UniqueRuntimeGlobalID()
         {
             Interlocked.Add(ref m_GlobalIDOrder, 1);
             return (uint)m_GlobalIDOrder;
@@ -56,9 +56,21 @@ namespace E
 #endif
         }
 
-        public static bool IsPlaying { get => Application.isPlaying; }
+        public static bool IsPlaying
+        {
+            get
+            {
+#if UNITY_EDITOR
+                return EditorApplication.isPlayingOrWillChangePlaymode;
+#else
+                return Application.isPlaying;
+#endif
+            }
+        }
 
-        public static bool AllowLog { get => Debug.isDebugBuild; }
+        public static bool AllowLog { get => Debug.isDebugBuild && BehaviourSettings.AllowLog; }
+
+        public static bool AllowLogError { get => Debug.isDebugBuild && BehaviourSettings.AllowLogError; }
 
         public static void Log(string message)
         {
