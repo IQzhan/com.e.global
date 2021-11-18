@@ -2,15 +2,15 @@
 
 namespace E
 {
+    [ExecuteAlways]
     [AutoInstantiate]
-    [ExecuteInEditMode]
-    public class TestBehabiour3 : GlobalBehaviour
+    public class TestBehaviour4 : GlobalBehaviour
     {
         protected override bool IsEnabled => true;
 
         protected override void OnUpdate()
         {
-            Debug.Log("Update 3");
+            Debug.Log("Update 4");
         }
     }
 }
