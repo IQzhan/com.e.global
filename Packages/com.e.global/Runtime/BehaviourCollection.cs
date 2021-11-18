@@ -173,12 +173,12 @@ namespace E
 
                 public void SetNext(ref Node node, int addr)
                 {
-                    node.prev = addr;
+                    node.next = addr;
                 }
 
                 public void SetPrev(ref Node node, int addr)
                 {
-                    node.next = addr;
+                    node.prev = addr;
                 }
             }
 
@@ -196,12 +196,12 @@ namespace E
 
                 public void SetNext(ref Node node, int addr)
                 {
-                    node.addressPrev = addr;
+                    node.addressNext = addr;
                 }
 
                 public void SetPrev(ref Node node, int addr)
                 {
-                    node.addressNext = addr;
+                    node.addressPrev = addr;
                 }
             }
 
