@@ -10,7 +10,7 @@ namespace E
 
         protected override void OnUpdate()
         {
-            Debug.Log("Update 4");
+            //Debug.Log("Update 4");
         }
     }
 }

@@ -19,7 +19,7 @@ namespace E
 
         protected override void OnUpdate()
         {
-            Debug.Log("OnUpdate");
+            //Debug.Log("OnUpdate");
         }
 
         protected override void OnDisable()
