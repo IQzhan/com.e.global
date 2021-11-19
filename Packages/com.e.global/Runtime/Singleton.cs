@@ -3,6 +3,12 @@ using UnityEngine;
 
 namespace E
 {
+    /// <summary>
+    /// Makes <see cref="MonoBehaviour"/> singleton.
+    /// <para>See also:
+    /// <seealso cref="SingletonAttribute"/></para>
+    /// </summary>
+    /// <typeparam name="T">MonoBehaviour</typeparam>
     public abstract class Singleton<T> : MonoBehaviour
         where T : Singleton<T>
     {
@@ -25,9 +31,16 @@ namespace E
 
         private static T m_Instance;
 
+        /// <summary>
+        /// Get instance.
+        /// </summary>
         public static T Instance
         { get { return CreateInstance(); } }
 
+        /// <summary>
+        /// Create instance if not exists.
+        /// </summary>
+        /// <returns></returns>
         public static T CreateInstance()
         {
             if (m_Instance == null)
@@ -43,6 +56,9 @@ namespace E
             return m_Instance;
         }
 
+        /// <summary>
+        /// Exists in scene?
+        /// </summary>
         public static bool Exists
         {
             get
@@ -69,6 +85,9 @@ namespace E
             }
         }
 
+        /// <summary>
+        /// Destroy instance.
+        /// </summary>
         public static void DestroyInstance()
         {
             T[] objs = FindObjectsOfType<T>();
@@ -81,7 +100,6 @@ namespace E
         private void Awake()
         {
             DoAwake();
-            Create();
         }
 
         private void OnDestroy()
@@ -90,8 +108,14 @@ namespace E
             DoDestroy();
         }
 
+        /// <summary>
+        /// Use this instead of Awake().
+        /// </summary>
         protected virtual void Create() { }
-
+        
+        /// <summary>
+        /// Use this instead of OnDestroy().
+        /// </summary>
         protected virtual void Destroy() { }
 
         private static void FindInstance()
@@ -141,6 +165,7 @@ namespace E
                     {
                         Utility.Log($"{InstanceName} Loaded in {PlatformMode}.");
                     }
+                    Create();
                 }
             }
         }
