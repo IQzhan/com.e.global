@@ -28,8 +28,14 @@ namespace E
             }
         }
 
+        /// <summary>
+        /// Update delta time.
+        /// </summary>
         public static float DeltaTime { get => Instance.m_DeltaTime; set => Instance.m_DeltaTime = value; }
 
+        /// <summary>
+        /// Use which method to update.
+        /// </summary>
         public static UpdateMethod Method { get => Instance.m_Method; set => Instance.m_Method = value; }
 
         public static bool AllowLog { get => Instance.m_AllowLog; set => Instance.m_AllowLog = value; }

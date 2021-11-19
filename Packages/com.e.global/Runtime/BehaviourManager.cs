@@ -8,49 +8,118 @@ using UnityEditor;
 
 namespace E
 {
+    /// <summary>
+    /// <para>Manage all <see cref="GlobalBehaviour"/>, you can change instantiate function if you need.</para>
+    /// <para>See also:
+    /// <seealso cref="InitializeBeforeAllBehavioursMethodAttribute"/>,
+    /// <seealso cref="ResetTypeInfosCallback"/>,
+    /// <seealso cref="OverrideCreateInstanceCallback"/></para>
+    /// </summary>
     public sealed partial class BehaviourManager
     {
         #region Public properties
 
+        /// <summary>
+        /// Already initialized?
+        /// </summary>
         public static bool IsReady { get => m_Instance.m_IsReady; }
 
+        /// <summary>
+        /// Use which method to update.
+        /// see <see cref="BehaviourSettings.Method"/>
+        /// </summary>
         public static BehaviourSettings.UpdateMethod UpdateMethod { get => BehaviourSettings.Method; }
 
+        /// <summary>
+        /// Update delta time.
+        /// see <see cref="BehaviourSettings.DeltaTime"/>
+        /// </summary>
         public static float DeltaTime { get => BehaviourSettings.DeltaTime; }
 
+        /// <summary>
+        /// Get instance of <see cref="BehaviourUpdater"/>.
+        /// </summary>
         public static BehaviourUpdater MonoBehaviour { get => BehaviourUpdater.Instance; }
 
+        /// <summary>
+        /// Call before auto create  <see cref="GlobalBehaviour"/> instances,
+        /// you can reset all <see cref="GlobalBehaviour"/>'s <see cref="TypeInfo"/>
+        /// makes them re-order or auto instantiate.
+        /// Set this event in <see cref="InitializeBeforeAllBehavioursMethodAttribute"/> method.
+        /// <para>See also:
+        /// <seealso cref="AutoInstantiateAttribute"/>,
+        /// <seealso cref="ExecuteAlways"/>,
+        /// <seealso cref="ExecuteInEditMode"/></para>
+        /// </summary>
         public static event Func<IEnumerable<TypeInfo>, IEnumerable<TypeInfo>> ResetTypeInfosCallback;
 
+        /// <summary>
+        /// Call when create <see cref="GlobalBehaviour"/> instances,
+        /// this event will override original create method.
+        /// Set this event in <see cref="InitializeBeforeAllBehavioursMethodAttribute"/> method.
+        /// </summary>
         public static event Func<TypeInfo, GlobalBehaviour> OverrideCreateInstanceCallback;
 
+        /// <summary>
+        /// Call by <see cref="BehaviourUpdater.FixedUpdate"/>.
+        /// </summary>
         public static event Action FixedUpdateCallback;
 
+        /// <summary>
+        /// Call <see cref="BehaviourUpdater.Update"/>.
+        /// </summary>
         public static event Action UpdateCallback;
 
+        /// <summary>
+        /// Call by <see cref="BehaviourUpdater.LateUpdate"/>.
+        /// </summary>
         public static event Action LateUpdateCallback;
 
 #if UNITY_EDITOR
+        /// <summary>
+        /// Call by <see cref="BehaviourUpdater.OnDrawGizmos"/>.
+        /// </summary>
         public static event Action OnDrawGizmosCallback;
 #endif
         #endregion
 
         #region Private properties
 
-        private static BehaviourManager m_Instance;
+        /// <summary>
+        /// This manager instance.
+        /// </summary>
+        internal static BehaviourManager m_Instance;
 
         private bool m_IsReady;
 
+        /// <summary>
+        /// All <see cref="GlobalBehaviour"/>'s <see cref="TypeInfo"/>
+        /// </summary>
         private SortedList<int, TypeInfo> m_TypeInfos;
 
+        /// <summary>
+        /// All created <see cref="GlobalBehaviour"/>.
+        /// </summary>
         private BehaviourCollection m_Collection;
 
+        /// <summary>
+        /// Last update time.
+        /// </summary>
         private double m_LastTime;
 
+        /// <summary>
+        /// Use to queue <see cref="GlobalBehaviour"/>'s id need to enable.
+        /// </summary>
         private List<int> m_EnableQueue;
 
+        /// <summary>
+        /// Use to queue <see cref="GlobalBehaviour"/>'s id need to update.
+        /// </summary>
         private List<int> m_UpdateQueue;
 
+        /// <summary>
+        /// Use to queue <see cref="GlobalBehaviour"/>'s id need to disable.
+        /// </summary>
         private List<int> m_DisableQueue;
 
         private enum StateToCheck
@@ -66,36 +135,70 @@ namespace E
 
         #region Public methods
 
+        /// <summary>
+        /// Create a <see cref="GlobalBehaviour"/> instance.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
         public static T CreateInstance<T>() where T : GlobalBehaviour
         {
             return m_Instance.InternalCreateInstance<T>();
         }
 
+        /// <summary>
+        ///  Create a <see cref="GlobalBehaviour"/> instance.
+        /// </summary>
+        /// <param name="type"></param>
+        /// <returns></returns>
         public static GlobalBehaviour CreateInstance(in Type type)
         {
             return m_Instance.InternalCreateInstance(type);
         }
 
+        /// <summary>
+        /// Get a created <see cref="GlobalBehaviour"/> instance.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
         public static T GetInstance<T>() where T : GlobalBehaviour
         {
             return m_Instance.InternalGetInstance<T>();
         }
 
+        /// <summary>
+        /// Get a created <see cref="GlobalBehaviour"/> instance.
+        /// </summary>
+        /// <param name="type"></param>
+        /// <returns></returns>
         public static GlobalBehaviour GetInstance(in Type type)
         {
             return m_Instance.InternalGetInstance(type);
         }
 
+        /// <summary>
+        /// Get created <see cref="GlobalBehaviour"/> instances.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
         public static T[] GetInstances<T>() where T : GlobalBehaviour
         {
             return m_Instance.InternalGetInstances<T>();
         }
 
+        /// <summary>
+        /// Get created <see cref="GlobalBehaviour"/> instances.
+        /// </summary>
+        /// <param name="type"></param>
+        /// <returns></returns>
         public static GlobalBehaviour[] GetInstances(in Type type)
         {
             return m_Instance.InternalGetInstances(type);
         }
 
+        /// <summary>
+        /// Destroy a created <see cref="GlobalBehaviour"/> instances.
+        /// </summary>
+        /// <param name="behaviour"></param>
         public static void DestroyInstance(in GlobalBehaviour behaviour)
         {
             m_Instance.InternalDestroyInstance(behaviour);
@@ -105,89 +208,90 @@ namespace E
 
         #region Initialize & Dispose
 
-        static BehaviourManager()
-        { m_Instance = new BehaviourManager(); }
+        /// <summary>
+        /// Make sure m_Instance always exist.
+        /// </summary>
+        static BehaviourManager() => m_Instance = new BehaviourManager();
 
-        private BehaviourManager() { Initialize(); }
+        private BehaviourManager() { }
 
         ~BehaviourManager() { Destroy(); }
 
 #if UNITY_EDITOR
+        // Execute these editor methods by <1> <2> <3> order.
 
         [InitializeOnLoadMethod]
         private static void InitializeOnLoadInEditor()
         {
+            // <1> Execute when
+            //       <open the editor>
             EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+            //UnityEngine.SceneManagement.SceneManager.scene
+        }
+
+        [UnityEditor.Callbacks.DidReloadScripts]
+        private static void DidReloadScripts()
+        {
+            // <2> Execute when
+            //       <open the editor>                  
+            //       <enter play mode from editor mode> 
+            //       <enter editor mode from play mode> 
+            DestroyOnExit();
+            InitializeOnLoad();
         }
 
         private static void OnPlayModeStateChanged(PlayModeStateChange stateChange)
         {
+            // <3> Execute when
+            //       <enter editor mode from play mode> 
+            //       <enter play mode from editor mode> 
+            //       <exit editor mode>                 
+            //       <exit play mode>                   
             switch (stateChange)
             {
                 case PlayModeStateChange.EnteredEditMode:
                 case PlayModeStateChange.EnteredPlayMode:
-                    InitializeOnLoadInRuntime();
+                    InitializeOnLoad();
                     break;
                 case PlayModeStateChange.ExitingEditMode:
                 case PlayModeStateChange.ExitingPlayMode:
+                    DestroyOnExit();
                     break;
             }
         }
-
-        [UnityEditor.Callbacks.DidReloadScripts]
 #else
+        // Execute at runtime after builded
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-#endif
-        private static void InitializeOnLoadInRuntime()
+        private static void InitializeOnLoadAtRuntime()
         {
-            m_Instance.FirstAccess();
-            BehaviourUpdater.Instance.manager = m_Instance;
+            InitializeOnLoad();
+            Application.quitting -= DestroyOnExit;
+            Application.quitting += DestroyOnExit;
+        }
+#endif
+
+        private static void InitializeOnLoad()
+        {
+            m_Instance.Initialize();
+            // Create BehaviourUpdater for update.
+            BehaviourUpdater.CreateInstance();
+        }
+
+        private static void DestroyOnExit()
+        {
+            m_Instance.Destroy();
         }
 
         private void Initialize()
         {
             try
             {
+                // make sure Initialize only once
+                if (m_IsReady) return;
                 ClearCallbacks();
                 CreateLifeCycleQueues();
-            }
-            catch (Exception e)
-            {
-                if (Utility.AllowLogError)
-                {
-                    Utility.LogException(e);
-                }
-                return;
-            }
-        }
-
-        private void Destroy()
-        {
-            try
-            {
-                BehaviourUpdater.DestroyInstance();
-                ReleaseCollection();
-                ReleaseLifeCycleQueues();
-                ClearCallbacks();
-                ReleaseTypeInfos();
-                GC.SuppressFinalize(this);
-            }
-            catch (Exception e)
-            {
-                if (Utility.AllowLogError)
-                {
-                    Utility.LogException(e);
-                }
-                return;
-            }
-        }
-
-        private void FirstAccess()
-        {
-            try
-            {
-                if (m_IsReady) return;
                 IEnumerable<Type> types = GetAllTypes();
                 ExecuteBefore(types);
                 CreateTypeInfos(types);
@@ -200,6 +304,28 @@ namespace E
                 {
                     Utility.LogException(e);
                 }
+            }
+        }
+
+        private void Destroy()
+        {
+            try
+            {
+                // make sure Destroy only once
+                if (!m_IsReady) return;
+                ReleaseCollection();
+                ReleaseLifeCycleQueues();
+                ClearCallbacks();
+                ReleaseTypeInfos();
+                m_IsReady = false;
+            }
+            catch (Exception e)
+            {
+                if (Utility.AllowLogError)
+                {
+                    Utility.LogException(e);
+                }
+                return;
             }
         }
 
