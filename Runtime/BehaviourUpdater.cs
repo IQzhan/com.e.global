@@ -17,33 +17,25 @@ namespace E
         HideFlags = HideFlags.HideInInspector)]
     public sealed partial class BehaviourUpdater : Singleton<BehaviourUpdater>
     {
-        internal BehaviourManager manager;
-
-        protected override void Create()
-        {
-            // Make sure manager is not null when open the editor.
-            manager = BehaviourManager.m_Instance;
-        }
-
         private void FixedUpdate()
         {
-            manager?.FixedUpdate();
+            BehaviourManager.instance.FixedUpdate();
         }
 
         private void Update()
         {
-            manager?.Update();
+            BehaviourManager.instance.Update();
         }
 
         private void LateUpdate()
         {
-            manager?.LateUpdate();
+            BehaviourManager.instance.LateUpdate();
         }
 
 #if UNITY_EDITOR
         private void OnDrawGizmos()
         {
-            manager?.OnDrawGizmos();
+            BehaviourManager.instance.OnDrawGizmos();
         }
 #endif
     }

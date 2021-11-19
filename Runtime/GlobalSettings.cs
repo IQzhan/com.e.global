@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace E
 {
-    public class BehaviourSettings : ScriptableObject
+    public class GlobalSettings : ScriptableObject
     {
         public enum UpdateMethod
         {
@@ -11,18 +11,18 @@ namespace E
             FixedUpdate
         }
 
-        private static BehaviourSettings m_Instance;
+        private static GlobalSettings m_Instance;
 
-        private static BehaviourSettings Instance
+        private static GlobalSettings Instance
         {
             get
             {
                 if (m_Instance == null)
                 {
 #if UNITY_EDITOR
-                    Utility.CreateAssetIfNotExists<BehaviourSettings>();
+                    Utility.CreateAssetIfNotExists<GlobalSettings>();
 #endif
-                    m_Instance = Utility.Load<BehaviourSettings>();
+                    m_Instance = Utility.Load<GlobalSettings>();
                 }
                 return m_Instance;
             }
@@ -42,7 +42,7 @@ namespace E
 
         public static bool AllowLogError { get => Instance.m_AllowLogError; set => Instance.m_AllowLogError = value; }
 
-        [SerializeField]
+        [SerializeField, Min(0.001f)]
         private float m_DeltaTime = 1f / 130f;
 
         [SerializeField]

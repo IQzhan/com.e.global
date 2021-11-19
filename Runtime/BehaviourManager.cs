@@ -22,19 +22,19 @@ namespace E
         /// <summary>
         /// Already initialized?
         /// </summary>
-        public static bool IsReady { get => m_Instance.m_IsReady; }
+        public static bool IsReady { get => instance.m_IsReady; }
 
         /// <summary>
         /// Use which method to update.
-        /// see <see cref="BehaviourSettings.Method"/>
+        /// see <see cref="GlobalSettings.Method"/>
         /// </summary>
-        public static BehaviourSettings.UpdateMethod UpdateMethod { get => BehaviourSettings.Method; }
+        public static GlobalSettings.UpdateMethod UpdateMethod { get => GlobalSettings.Method; }
 
         /// <summary>
         /// Update delta time.
-        /// see <see cref="BehaviourSettings.DeltaTime"/>
+        /// see <see cref="GlobalSettings.DeltaTime"/>
         /// </summary>
-        public static float DeltaTime { get => BehaviourSettings.DeltaTime; }
+        public static float DeltaTime { get => GlobalSettings.DeltaTime; }
 
         /// <summary>
         /// Get instance of <see cref="BehaviourUpdater"/>.
@@ -88,7 +88,7 @@ namespace E
         /// <summary>
         /// This manager instance.
         /// </summary>
-        internal static BehaviourManager m_Instance;
+        internal static BehaviourManager instance;
 
         private bool m_IsReady;
 
@@ -142,7 +142,7 @@ namespace E
         /// <returns></returns>
         public static T CreateInstance<T>() where T : GlobalBehaviour
         {
-            return m_Instance.InternalCreateInstance<T>();
+            return instance.InternalCreateInstance<T>();
         }
 
         /// <summary>
@@ -152,7 +152,7 @@ namespace E
         /// <returns></returns>
         public static GlobalBehaviour CreateInstance(in Type type)
         {
-            return m_Instance.InternalCreateInstance(type);
+            return instance.InternalCreateInstance(type);
         }
 
         /// <summary>
@@ -162,7 +162,7 @@ namespace E
         /// <returns></returns>
         public static T GetInstance<T>() where T : GlobalBehaviour
         {
-            return m_Instance.InternalGetInstance<T>();
+            return instance.InternalGetInstance<T>();
         }
 
         /// <summary>
@@ -172,7 +172,7 @@ namespace E
         /// <returns></returns>
         public static GlobalBehaviour GetInstance(in Type type)
         {
-            return m_Instance.InternalGetInstance(type);
+            return instance.InternalGetInstance(type);
         }
 
         /// <summary>
@@ -182,7 +182,7 @@ namespace E
         /// <returns></returns>
         public static T[] GetInstances<T>() where T : GlobalBehaviour
         {
-            return m_Instance.InternalGetInstances<T>();
+            return instance.InternalGetInstances<T>();
         }
 
         /// <summary>
@@ -192,7 +192,7 @@ namespace E
         /// <returns></returns>
         public static GlobalBehaviour[] GetInstances(in Type type)
         {
-            return m_Instance.InternalGetInstances(type);
+            return instance.InternalGetInstances(type);
         }
 
         /// <summary>
@@ -201,7 +201,7 @@ namespace E
         /// <param name="behaviour"></param>
         public static void DestroyInstance(in GlobalBehaviour behaviour)
         {
-            m_Instance.InternalDestroyInstance(behaviour);
+            instance.InternalDestroyInstance(behaviour);
         }
 
         #endregion
@@ -211,7 +211,7 @@ namespace E
         /// <summary>
         /// Make sure m_Instance always exist.
         /// </summary>
-        static BehaviourManager() => m_Instance = new BehaviourManager();
+        static BehaviourManager() => instance = new BehaviourManager();
 
         private BehaviourManager() { }
 
@@ -227,7 +227,8 @@ namespace E
             //       <open the editor>
             EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
-            //UnityEngine.SceneManagement.SceneManager.scene
+            EditorApplication.update -= CheckBehaviourUpdater;
+            EditorApplication.update += CheckBehaviourUpdater;
         }
 
         [UnityEditor.Callbacks.DidReloadScripts]
@@ -237,6 +238,7 @@ namespace E
             //       <open the editor>                  
             //       <enter play mode from editor mode> 
             //       <enter editor mode from play mode> 
+            //       <reload assemblies>
             DestroyOnExit();
             InitializeOnLoad();
         }
@@ -260,6 +262,11 @@ namespace E
                     break;
             }
         }
+
+        private static void CheckBehaviourUpdater()
+        {
+            BehaviourUpdater.CreateInstance();
+        }
 #else
         // Execute at runtime after builded
 
@@ -274,14 +281,14 @@ namespace E
 
         private static void InitializeOnLoad()
         {
-            m_Instance.Initialize();
+            instance.Initialize();
             // Create BehaviourUpdater for update.
             BehaviourUpdater.CreateInstance();
         }
 
         private static void DestroyOnExit()
         {
-            m_Instance.Destroy();
+            instance.Destroy();
         }
 
         private void Initialize()
@@ -570,15 +577,15 @@ namespace E
         }
 
         internal void FixedUpdate()
-        { CallUpdate(BehaviourSettings.UpdateMethod.FixedUpdate, FixedUpdateCallback); }
+        { CallUpdate(GlobalSettings.UpdateMethod.FixedUpdate, FixedUpdateCallback); }
 
         internal void Update()
-        { CallUpdate(BehaviourSettings.UpdateMethod.Update, UpdateCallback); }
+        { CallUpdate(GlobalSettings.UpdateMethod.Update, UpdateCallback); }
 
         internal void LateUpdate()
-        { CallUpdate(BehaviourSettings.UpdateMethod.LateUpdate, LateUpdateCallback); }
+        { CallUpdate(GlobalSettings.UpdateMethod.LateUpdate, LateUpdateCallback); }
 
-        private void CallUpdate(BehaviourSettings.UpdateMethod updateMethod, in Action updateCallback)
+        private void CallUpdate(GlobalSettings.UpdateMethod updateMethod, in Action updateCallback)
         {
             if (m_IsReady)
             {
