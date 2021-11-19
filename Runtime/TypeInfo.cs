@@ -3,6 +3,10 @@ using UnityEngine;
 
 namespace E
 {
+    /// <summary>
+    /// Type info of <see cref="GlobalBehaviour"/>.
+    /// could monified by <see cref="BehaviourManager.ResetTypeInfosCallback"/>.
+    /// </summary>
     public struct TypeInfo : IEquatable<TypeInfo>
     {
         public TypeInfo(in Type type)
@@ -19,12 +23,30 @@ namespace E
 
         private int m_TypeHashCode;
 
+        /// <summary>
+        /// Will this type of <see cref="GlobalBehaviour"/>'s life circle methods executed in editor mode?
+        /// <para>Use <see cref="ExecuteAlways"/> or <see cref="ExecuteInEditMode"/> to make this happen.
+        /// or monified this field by <see cref="BehaviourManager.ResetTypeInfosCallback"/>.</para>
+        /// </summary>
         public bool isExecuteInEditorMode;
 
+        /// <summary>
+        /// Auto instantiate when load game?
+        /// <para>Use <see cref="AutoInstantiateAttribute"/> to make this happen.
+        /// or monified this field by <see cref="BehaviourManager.ResetTypeInfosCallback"/>.</para>
+        /// </summary>
         public bool isAutoInstantiation;
 
+        /// <summary>
+        /// Auto instantiate order,
+        /// smaller,earlier.
+        /// <para><seealso cref="AutoInstantiateAttribute.order"/></para>
+        /// </summary>
         public int order;
 
+        /// <summary>
+        /// <see cref="GlobalBehaviour"/>'s type.
+        /// </summary>
         public Type Value { get => m_Type; set => Initialize(value); }
 
         public int TypeHashCode { get => m_TypeHashCode; }
@@ -74,11 +96,6 @@ namespace E
                 $"order: {order}";
         }
 
-        public override bool Equals(object obj)
-        {
-            return obj is TypeInfo info && Equals(info);
-        }
-
         public bool Equals(TypeInfo other)
         {
             return m_TypeHashCode == other.m_TypeHashCode &&
@@ -87,25 +104,12 @@ namespace E
                    order == other.order;
         }
 
-        public override int GetHashCode()
-        {
-            int hashCode = -1017475848;
-            hashCode = hashCode * -1521134295 + m_TypeHashCode;
-            hashCode = hashCode * -1521134295
-                + (isExecuteInEditorMode ? 1 : 0)
-                + (isAutoInstantiation ? 2 : 0);
-            hashCode = hashCode * -1521134295 + order;
-            return hashCode;
-        }
+        public override bool Equals(object obj) => obj is TypeInfo info && Equals(info);
 
-        public static bool operator ==(TypeInfo left, TypeInfo right)
-        {
-            return left.Equals(right);
-        }
+        public override int GetHashCode() => m_TypeHashCode;
 
-        public static bool operator !=(TypeInfo left, TypeInfo right)
-        {
-            return !(left == right);
-        }
+        public static bool operator ==(TypeInfo left, TypeInfo right) => left.Equals(right);
+
+        public static bool operator !=(TypeInfo left, TypeInfo right) => !(left == right);
     }
 }
