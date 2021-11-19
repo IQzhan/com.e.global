@@ -68,9 +68,9 @@ namespace E
             }
         }
 
-        public static bool AllowLog { get => Debug.isDebugBuild && BehaviourSettings.AllowLog; }
+        public static bool AllowLog { get => Debug.isDebugBuild && GlobalSettings.AllowLog; }
 
-        public static bool AllowLogError { get => Debug.isDebugBuild && BehaviourSettings.AllowLogError; }
+        public static bool AllowLogError { get => Debug.isDebugBuild && GlobalSettings.AllowLogError; }
 
         public static void Log(string message)
         {

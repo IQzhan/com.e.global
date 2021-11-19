@@ -30,7 +30,7 @@ namespace E
 
         protected override void OnUpdate()
         {
-            Debug.Log("OnUpdate啦");
+            //Debug.Log("OnUpdate啦");
         }
 
         protected override void OnDisable()
