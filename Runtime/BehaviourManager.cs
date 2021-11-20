@@ -103,6 +103,11 @@ namespace E
         private BehaviourCollection m_Collection;
 
         /// <summary>
+        /// For calculate time.
+        /// </summary>
+        private System.Diagnostics.Stopwatch m_Stopwatch;
+
+        /// <summary>
         /// Last update time.
         /// </summary>
         private double m_LastTime;
@@ -297,6 +302,7 @@ namespace E
             {
                 // make sure Initialize only once
                 if (m_IsReady) return;
+                CreateStopwatch();
                 ClearCallbacks();
                 CreateLifeCycleQueues();
                 IEnumerable<Type> types = GetAllTypes();
@@ -324,6 +330,7 @@ namespace E
                 ReleaseLifeCycleQueues();
                 ClearCallbacks();
                 ReleaseTypeInfos();
+                ClearStopwatch();
                 m_IsReady = false;
             }
             catch (Exception e)
@@ -334,6 +341,18 @@ namespace E
                 }
                 return;
             }
+        }
+
+        private void CreateStopwatch()
+        {
+            m_Stopwatch = new System.Diagnostics.Stopwatch();
+            m_Stopwatch.Start();
+        }
+
+        private void ClearStopwatch()
+        {
+            m_Stopwatch.Stop();
+            m_Stopwatch = null;
         }
 
         private IEnumerable<Type> GetAllTypes()
@@ -616,9 +635,10 @@ namespace E
 
         private void UpdateLifeCycle()
         {
-            if (Time.realtimeSinceStartupAsDouble - m_LastTime >= DeltaTime)
+            double seconds = m_Stopwatch.Elapsed.TotalSeconds;
+            if (seconds - m_LastTime >= DeltaTime)
             {
-                m_LastTime = Time.realtimeSinceStartupAsDouble;
+                m_LastTime = seconds;
                 ClearLifeCycleQueues();
                 CheckAllLifeCycleState();
                 InternalLifeCycleBody();
