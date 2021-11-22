@@ -3,7 +3,7 @@
   "displayName": "Global",
   "description": "Simulate unity life circle with one single monobehaviour.",
   "type": "module",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "unity": "2019.3",
   "license": "MIT",
   "keywords": [

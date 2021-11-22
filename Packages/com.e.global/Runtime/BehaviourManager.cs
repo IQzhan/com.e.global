@@ -303,7 +303,6 @@ namespace E
                 // make sure Initialize only once
                 if (m_IsReady) return;
                 CreateStopwatch();
-                ClearCallbacks();
                 CreateLifeCycleQueues();
                 IEnumerable<Type> types = GetAllTypes();
                 ExecuteBefore(types);
@@ -327,9 +326,9 @@ namespace E
                 // make sure Destroy only once
                 if (!m_IsReady) return;
                 ReleaseCollection();
+                ReleaseTypeInfos();
                 ReleaseLifeCycleQueues();
                 ClearCallbacks();
-                ReleaseTypeInfos();
                 ClearStopwatch();
                 m_IsReady = false;
             }
@@ -345,6 +344,7 @@ namespace E
 
         private void CreateStopwatch()
         {
+            m_LastTime = 0;
             m_Stopwatch = new System.Diagnostics.Stopwatch();
             m_Stopwatch.Start();
         }
@@ -353,6 +353,7 @@ namespace E
         {
             m_Stopwatch.Stop();
             m_Stopwatch = null;
+            m_LastTime = 0;
         }
 
         private IEnumerable<Type> GetAllTypes()
