@@ -8,7 +8,7 @@ namespace E
         [InitializeBeforeAllBehavioursMethod]
         public static void Begin()
         {
-            Debug.Log("Begin");
+            //Debug.Log("Begin");
             BehaviourManager.OnDrawGizmosCallback += OnDrawGizmosCallback;
 
 

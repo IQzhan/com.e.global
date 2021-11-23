@@ -4,7 +4,7 @@ using UnityEngine;
 namespace E
 {
     [ExecuteInEditMode]
-    [AutoInstantiate(5)]
+    //[AutoInstantiate(5)]
     public class TestBehaviour1 : TestBehaviour1<TestBehaviour1>
     {
         protected override void OnAwake()

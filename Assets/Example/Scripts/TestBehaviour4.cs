@@ -3,7 +3,7 @@
 namespace E
 {
     [ExecuteAlways]
-    [AutoInstantiate]
+    //[AutoInstantiate]
     public class TestBehaviour4 : GlobalBehaviour
     {
         protected override bool IsEnabled => true;

@@ -9,27 +9,27 @@ namespace E
 
         protected override void OnAwake()
         {
-            Debug.Log("Awake");
+            Debug.Log("Awake 0");
         }
 
         protected override void OnEnable()
         {
-            Debug.Log("OnEnable");
+            Debug.Log("OnEnable 0");
         }
 
         protected override void OnUpdate()
         {
-            //Debug.Log("OnUpdate");
+            Debug.Log("OnUpdate 0");
         }
 
         protected override void OnDisable()
         {
-            Debug.Log("OnDisable");
+            Debug.Log("OnDisable 0");
         }
 
         protected override void OnDestroy()
         {
-            Debug.Log("OnDestroy");
+            Debug.Log("OnDestroy 0");
         }
     }
 }

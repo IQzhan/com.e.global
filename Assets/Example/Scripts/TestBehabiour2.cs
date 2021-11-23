@@ -1,15 +1,32 @@
 ﻿using UnityEngine;
+using static E.BehaviourManager;
 
 namespace E
 {
     [AutoInstantiate]
+    [ExecuteAlways]
     public class TestBehabiour2 : GlobalBehaviour
     {
-        protected override bool IsEnabled => true;
+        private bool enabled = true;
+
+        protected override bool IsEnabled => enabled;
 
         protected override void OnAwake()
         {
-            Debug.Log("TestBehabiour2 Awake");
+            
         }
+
+        protected override void OnEnable()
+        {
+
+        }
+
+        protected override void OnUpdate()
+        {
+            Debug.Log("OnUpdate 2");
+            CreateInstance<TestBehabiour0>();
+            enabled = false;
+        }
+
     }
 }

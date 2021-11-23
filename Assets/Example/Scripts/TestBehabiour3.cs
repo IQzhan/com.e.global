@@ -2,7 +2,7 @@
 
 namespace E
 {
-    [AutoInstantiate]
+    //[AutoInstantiate]
     [ExecuteInEditMode]
     public class TestBehabiour3 : GlobalBehaviour
     {
