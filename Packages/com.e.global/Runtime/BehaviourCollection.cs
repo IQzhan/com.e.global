@@ -86,9 +86,12 @@ namespace E
 
             object IEnumerator.Current => Current;
 
+            private int nextAddress;
+
             public void Reset()
             {
                 current = null;
+                nextAddress = -1;
             }
 
             public bool MoveNext()
@@ -99,8 +102,10 @@ namespace E
                 }
                 else
                 {
-                    current = body.GetAddressNext(current.ID);
+                    current = body.Get(nextAddress);
                 }
+                if (current != null)
+                    nextAddress = body.GetNextAddress(current.ID);
                 return current != null;
             }
 
@@ -264,14 +269,9 @@ namespace E
                 return default;
             }
 
-            public T GetAddressNext(int address)
+            public int GetNextAddress(int address)
             {
-                int index = m_Block[address].addressNext;
-                if (index != -1)
-                {
-                    return m_Block[index].value;
-                }
-                return default;
+                return m_Block[address].addressNext;
             }
 
             public T Get(int address)

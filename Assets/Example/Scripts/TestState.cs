@@ -12,9 +12,9 @@ namespace E
 
         }
 
-        private class StateMachine
+        public class StateMachine
         {
-            private enum State
+            public enum State
             {
                 None = 0,      // -> Awaked
                 Awaked = 1,    // -> Enabled | Destroyed
@@ -30,92 +30,79 @@ namespace E
 
             private bool m_IsActived = false;
 
-            public void CallCreate()
+            public void InternalAwake()
             {
                 //if(!allowCreate) return;
                 m_IsAlive = true;
-                ExecuteState();
+                if (m_State == State.None)
+                {
+                    //OnAwake();
+                    m_State = State.Awaked;
+                }
             }
 
-            public void CallDestroy()
+            private void InternalEnable()
             {
-                m_IsAlive = false;
-                ExecuteState();
-            }
-
-            private void CallUpdateState()
-            {
-                ExecuteState();
-            }
-
-            private void ExecuteState()
-            {
-                //系统生命周期OnEnable OnUpdate OnDisable
-                //判断系统当前生命周期,已经到了或过了就直接执行，没到就入列
-                //仅限OnEnable OnUpdate OnDisable
-                State lastState = m_State;
                 switch (m_State)
                 {
-                    case State.None:
-                        if (m_IsAlive)
-                        {
-                            //OnAwake();
-                            m_State = State.Awaked;
-                        }
-                        break;
                     case State.Awaked:
-                        if (m_IsAlive && m_IsActived)
-                        {
-                            //OnEnable();
-                            m_State = State.Enabled;
-                        }
-                        else if (!m_IsAlive)
-                        {
-                            //OnDestroy();
-                            m_State = State.Destroyed;
-                        }
-                        break;
-                    case State.Enabled:
-                        if (m_IsAlive && m_IsActived)
-                        {
-                            //OnUpdate();
-                            m_State = State.OnUpdate;
-                        }
-                        else if (!m_IsAlive || !m_IsActived)
-                        {
-                            //OnDisable();
-                            m_State = State.Disabled;
-                        }
-                        break;
-                    case State.OnUpdate:
-                        if (!m_IsAlive || !m_IsActived)
-                        {
-                            //OnDisable();
-                            m_State = State.Disabled;
-                        }
-                        //OnUpdate();
-                        if (!m_IsAlive || !m_IsActived)
-                        {
-                            //OnDisable();
-                            m_State = State.Disabled;
-                        }
-                        break;
                     case State.Disabled:
                         if (m_IsAlive && m_IsActived)
                         {
                             //OnEnable();
                             m_State = State.Enabled;
                         }
-                        else if (!m_IsAlive)
-                        {
-                            //OnDestroy();
-                            m_State = State.Destroyed;
-                        }
-                        break;
-                    case State.Destroyed:
                         break;
                 }
-                if (lastState != m_State) ExecuteState();
+            }
+
+            private void InternalUpdate()
+            {
+                switch (m_State)
+                {
+                    case State.Enabled:
+                    case State.OnUpdate:
+                        if (m_IsAlive && m_IsActived)
+                        {
+                            //OnUpdate();
+                            m_State = State.OnUpdate;
+                        }
+                        break;
+                }
+            }
+
+            private void InternalDisable()
+            {
+                switch (m_State)
+                {
+                    case State.Enabled:
+                    case State.OnUpdate:
+                        if (!m_IsAlive || !m_IsActived)
+                        {
+                            //OnDisable();
+                            m_State = State.Disabled;
+                        }
+                        break;
+                }
+            }
+
+            public void InternalDestroy()
+            {
+                m_IsAlive = false;
+                switch (m_State)
+                {
+                    case State.Awaked:
+                    case State.Disabled:
+                        //OnDestroy();
+                        m_State = State.Destroyed;
+                        break;
+                    case State.Enabled:
+                    case State.OnUpdate:
+                        //OnDisable();
+                        //OnDestroy();
+                        m_State = State.Destroyed;
+                        break;
+                }
             }
 
         }
