@@ -13,112 +13,278 @@
     public abstract partial class GlobalBehaviour
     {
         /// <summary>
+        /// Life state of GlobalBehaviour
+        /// </summary>
+        public enum State
+        {
+            /// <summary>
+            /// None -> Awaked
+            /// </summary>
+            None = 0,
+
+            /// <summary>
+            /// Invoking OnAwake
+            /// </summary>
+            OnAwake = 1,
+
+            /// <summary>
+            /// Awaked -> Enabled or Destroyed
+            /// </summary>
+            Awaked = 2,
+
+            /// <summary>
+            /// Invoking OnEnable
+            /// </summary>
+            OnEnable = 3,
+
+            /// <summary>
+            /// Enabled -> Updated or Disabled or (Disabled and Destroyed)
+            /// </summary>
+            Enabled = 4,
+
+            /// <summary>
+            /// Invoking OnUpdate
+            /// </summary>
+            OnUpdate = 5,
+
+            /// <summary>
+            /// Updated -> Disabled or (Disabled and Destroyed)
+            /// </summary>
+            Updated = 6,
+
+            /// <summary>
+            /// Invoking OnDisable
+            /// </summary>
+            OnDisable = 7,
+
+            /// <summary>
+            /// Disabled -> Enabled or Destroyed
+            /// </summary>
+            Disabled = 8,
+
+            /// <summary>
+            /// Invoking OnDestroy
+            /// </summary>
+            OnDestroy = -1,
+
+            /// <summary>
+            /// Destroyed
+            /// </summary>
+            Destroyed = -2
+        }
+
+        /// <summary>
         /// Only runtime id, do not save it.
         /// </summary>
-        public int ID { get; internal set; } = -1;
+        public int ID => id;
 
-        internal int typeHashCode;
+        /// <summary>
+        /// Life state of GlobalBehaviour
+        /// </summary>
+        public State LifeState => m_State;
 
         /// <summary>
         /// See <see cref="TypeInfo.isExecuteInEditorMode"/>
         /// </summary>
-        public bool IsExecuteInEditorMode { get; internal set; } = false;
+        public bool IsExecuteInEditorMode => isExecuteInEditorMode;
 
-        /// <summary>
-        /// Can execute life circle methods?
-        /// </summary>
-        public bool IsAlive { get => Utility.IsPlaying || IsExecuteInEditorMode; }
+        internal int id = -1;
 
-        /// <summary>
-        /// <see cref="OnAwake()"/> has already callated.
-        /// </summary>
-        public bool IsAwaked { get; private set; } = false;
+        internal int typeHashCode;
 
-        internal bool IsLastActived { get; private set; } = false;
+        internal bool isExecuteInEditorMode = false;
 
-        /// <summary>
-        /// Allow to call <see cref="OnUpdate()"/>
-        /// </summary>
-        public bool IsActived { get => IsAwaked && IsEnabled; }
+        private State m_State = State.None;
 
         /// <summary>
         /// Control enable state.
         /// </summary>
-        protected abstract bool IsEnabled { get; }
+        protected abstract bool IsActive { get; }
 
         /// <summary>
-        /// Call by <see cref="BehaviourManager.CreateInstance"/> if <see cref="IsAlive"/> is true.
+        /// Call by <see cref="BehaviourManager.CreateInstance"/>.
         /// </summary>
         protected virtual void OnAwake() { }
 
         /// <summary>
-        /// Call if <see cref="IsActived"/> is from false to true.
+        /// Call if <see cref="IsActive"/> is from false to true.
         /// </summary>
         protected virtual void OnEnable() { }
 
         /// <summary>
-        /// Call if <see cref="IsActived"/> is true.
+        /// Call if <see cref="IsActive"/> is true.
         /// </summary>
         protected virtual void OnUpdate() { }
 
         /// <summary>
-        /// Call if <see cref="IsActived"/> is from true to false.
+        /// Call if <see cref="IsActive"/> is from true to false.
         /// </summary>
         protected virtual void OnDisable() { }
 
         /// <summary>
-        /// Call by <see cref="BehaviourManager.DestroyInstance"/> if <see cref="IsAwaked"/> is true.
+        /// Call by <see cref="BehaviourManager.DestroyInstance"/>.
         /// </summary>
         protected virtual void OnDestroy() { }
 
-        internal void InernalAwake()
+        internal void InternalAwake()
         {
-            if (IsAlive && !IsAwaked && !IsLastActived)
+            if (!(Utility.IsPlaying || IsExecuteInEditorMode)) return;
+            if (m_State == State.None)
             {
-                OnAwake();
-                IsAwaked = true;
+                m_State = State.OnAwake;
+                try
+                {
+                    OnAwake();
+                    if (m_State == State.OnAwake)
+                        m_State = State.Awaked;
+                }
+                catch (System.Exception e)
+                {
+                    m_State = State.None;
+                    throw e;
+                }
             }
         }
 
-        internal void InernalEnable()
+        internal void InternalEnable()
         {
-            if (!IsLastActived && IsActived)
+            switch (m_State)
             {
-                OnEnable();
-                IsLastActived = true;
+                case State.Awaked:
+                case State.Disabled:
+                    State temp = m_State;
+                    try
+                    {
+                        if (IsActive)
+                        {
+                            m_State = State.OnEnable;
+                            OnEnable();
+                            if (m_State == State.OnEnable)
+                                m_State = State.Enabled;
+                        }
+                    }
+                    catch (System.Exception e)
+                    {
+                        m_State = temp;
+                        throw e;
+                    }
+                    break;
             }
         }
 
         internal void InternalUpdate()
         {
-            if (IsActived)
+            switch (m_State)
             {
-                OnUpdate();
-                IsLastActived = true;
+                case State.Enabled:
+                case State.Updated:
+                    State temp = m_State;
+                    try
+                    {
+                        if (IsActive)
+                        {
+                            m_State = State.OnUpdate;
+                            OnUpdate();
+                            if (m_State == State.OnUpdate)
+                                m_State = State.Updated;
+                        }
+                    }
+                    catch (System.Exception e)
+                    {
+                        m_State = temp;
+                        throw e;
+                    }
+                    break;
             }
         }
 
         internal void InternalDisable()
         {
-            if (IsLastActived && !IsActived)
+            switch (m_State)
             {
-                OnDisable();
-                IsLastActived = false;
+                case State.Enabled:
+                case State.Updated:
+                    State temp = m_State;
+                    try
+                    {
+                        if (!IsActive)
+                        {
+                            m_State = State.OnDisable;
+                            OnDisable();
+                            if (m_State == State.OnDisable)
+                                m_State = State.Disabled;
+                        }
+                    }
+                    catch (System.Exception e)
+                    {
+                        m_State = temp;
+                        throw e;
+                    }
+                    break;
             }
         }
 
         internal void InternalDestroy()
         {
-            if (IsAwaked)
+            if (m_State < State.OnAwake) return;
+            State temp = m_State;
+            if (m_State < State.OnDisable)
             {
-                if (IsLastActived)
+                try
                 {
+                    m_State = State.OnDisable;
                     OnDisable();
-                    IsLastActived = false;
                 }
-                OnDestroy();
-                IsAwaked = false;
+                catch (System.Exception e)
+                {
+                    m_State = temp;
+                    throw e;
+                }
             }
+            try
+            {
+                m_State = State.OnDestroy;
+                OnDestroy();
+                m_State = State.Destroyed;
+            }
+            catch (System.Exception e)
+            {
+                m_State = temp;
+                throw e;
+            }
+        }
+
+        internal bool CheckEnable()
+        {
+            switch (m_State)
+            {
+                case State.Awaked:
+                case State.Disabled:
+                    return IsActive;
+            }
+            return false;
+        }
+
+        internal bool CheckUpdate()
+        {
+            switch (m_State)
+            {
+                case State.Enabled:
+                case State.Updated:
+                    return IsActive;
+            }
+            return false;
+        }
+
+        internal bool CheckDisable()
+        {
+            switch (m_State)
+            {
+                case State.Enabled:
+                case State.Updated:
+                    return !IsActive;
+            }
+            return false;
         }
     }
 }

@@ -26,7 +26,6 @@ namespace E
                 string assetsFolderStr = "Assets";
                 string settingsFolderStr = "Global Settings";
                 string resourcesStr = "Resources";
-                T inst = ScriptableObject.CreateInstance<T>();
                 if (!AssetDatabase.IsValidFolder($"{assetsFolderStr}/{settingsFolderStr}"))
                 {
                     AssetDatabase.CreateFolder(assetsFolderStr, settingsFolderStr);
@@ -35,9 +34,8 @@ namespace E
                 {
                     AssetDatabase.CreateFolder($"{assetsFolderStr}/{settingsFolderStr}", resourcesStr);
                 }
-                AssetDatabase.CreateAsset(inst, $"{assetsFolderStr}/{settingsFolderStr}/{resourcesStr}/{typeof(T).Name}.asset");
-                AssetDatabase.SaveAssets();
-                AssetDatabase.Refresh();
+                Editor.ScriptableObjectAssetsCreator.
+                    CreateScriptableObjectAsset<T>($"{assetsFolderStr}/{settingsFolderStr}/{resourcesStr}/{typeof(T).Name}.asset");
             }
         }
 #endif

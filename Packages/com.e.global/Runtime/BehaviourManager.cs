@@ -275,7 +275,7 @@ namespace E
 #else
         // Execute at runtime after builded
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void InitializeOnLoadAtRuntime()
         {
             InitializeOnLoad();
@@ -510,8 +510,8 @@ namespace E
                     return null;
                 }
                 m_Collection.Add(behaviour);
-                behaviour.InernalAwake();
-                CheckLifeCycleState(behaviour, StateToCheck.All);
+                behaviour.InternalAwake();
+                CheckLifeCycleState(behaviour, StateToCheck.Enable);
             }
             catch (Exception e)
             {
@@ -536,7 +536,7 @@ namespace E
                 behaviour = Activator.CreateInstance(typeInfo.Value, true) as GlobalBehaviour;
             }
             behaviour.typeHashCode = typeInfo.TypeHashCode;
-            behaviour.IsExecuteInEditorMode = typeInfo.isExecuteInEditorMode;
+            behaviour.isExecuteInEditorMode = typeInfo.isExecuteInEditorMode;
             return behaviour;
         }
 
@@ -656,10 +656,23 @@ namespace E
 
         private void CheckLifeCycleState(in GlobalBehaviour behaviour, StateToCheck stateToCheck)
         {
-            bool isActived;
             try
             {
-                isActived = behaviour.IsActived;
+                if ((stateToCheck & StateToCheck.Enable) != 0 &&
+                behaviour.CheckEnable())
+                {
+                    m_EnableQueue.Add(behaviour.ID);
+                }
+                if ((stateToCheck & StateToCheck.Update) != 0 &&
+                    behaviour.CheckUpdate())
+                {
+                    m_UpdateQueue.Add(behaviour.ID);
+                }
+                if ((stateToCheck & StateToCheck.Disable) != 0 &&
+                    behaviour.CheckDisable())
+                {
+                    m_DisableQueue.Add(behaviour.ID);
+                }
             }
             catch (Exception e)
             {
@@ -667,23 +680,6 @@ namespace E
                 {
                     Utility.LogException(e);
                 }
-                return;
-            }
-            bool isLastActived = behaviour.IsLastActived;
-            if ((stateToCheck & StateToCheck.Enable) != 0 &&
-                !isLastActived && isActived)
-            {
-                m_EnableQueue.Add(behaviour.ID);
-            }
-            if ((stateToCheck & StateToCheck.Update) != 0 &&
-                isActived)
-            {
-                m_UpdateQueue.Add(behaviour.ID);
-            }
-            if ((stateToCheck & StateToCheck.Disable) != 0 &&
-                isLastActived && !isActived)
-            {
-                m_DisableQueue.Add(behaviour.ID);
             }
         }
 
@@ -705,7 +701,7 @@ namespace E
                 {
                     try
                     {
-                        behaviour.InernalEnable();
+                        behaviour.InternalEnable();
                     }
                     catch (Exception e)
                     {

@@ -1,7 +1,9 @@
 {
     "name": "E.Global.Runtime",
     "rootNamespace": "E",
-    "references": [],
+    "references": [
+        "E.Global.Editor"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": true,

@@ -1,5 +1,7 @@
-﻿using UnityEditor;
-using UnityEngine;
+﻿using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace E
 {
@@ -8,17 +10,17 @@ namespace E
         [InitializeBeforeAllBehavioursMethod]
         public static void Begin()
         {
-            //Debug.Log("Begin");
+#if UNITY_EDITOR
             BehaviourManager.OnDrawGizmosCallback += OnDrawGizmosCallback;
-
-
+#endif
         }
 
-
+#if UNITY_EDITOR
         private static void OnDrawGizmosCallback()
         {
-            Handles.DrawLine(Vector3.one, Vector3.one * 2 + Vector3.forward * 3);
+            Handles.Label(Vector3.zero, "Draw Gizmos");
         }
+#endif
 
     }
 }
