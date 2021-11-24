@@ -18,7 +18,7 @@ namespace E
 
         private readonly SortedList<int, LinkFactory<GlobalBehaviour>.Address> typeLinks;
 
-        public GlobalBehaviour this[in int id]
+        public GlobalBehaviour this[int id]
         { get => linkFactory.Get(id); }
 
         public void Add(in GlobalBehaviour value)
