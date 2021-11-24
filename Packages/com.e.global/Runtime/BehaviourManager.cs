@@ -307,7 +307,6 @@ namespace E
                 IEnumerable<Type> types = GetAllTypes();
                 ExecuteBefore(types);
                 CreateTypeInfos(types);
-                AutoCreateInstances();
                 m_IsReady = true;
             }
             catch (Exception e)
@@ -426,17 +425,7 @@ namespace E
             if (m_Collection == null) return;
             foreach (GlobalBehaviour behaviour in m_Collection)
             {
-                try
-                {
-                    behaviour.InternalDestroy();
-                }
-                catch (Exception e)
-                {
-                    if (Utility.AllowLogError)
-                    {
-                        Utility.LogException(e);
-                    }
-                }
+                behaviour?.InternalDestroy();
             }
             m_Collection.Clear();
             m_Collection = null;
@@ -497,21 +486,40 @@ namespace E
         {
             int typeHashCode = type.GetHashCode();
             if (!GetTypeInfo(typeHashCode, out TypeInfo typeInfo)) return null;
-            GlobalBehaviour behaviour;
+            GlobalBehaviour behaviour = CreateInstanceByTypeInfo(typeInfo);
+            if (behaviour == null) return null;
+            m_Collection.Add(behaviour);
+            if (behaviour.InternalAwake())
+            {
+                CheckLifeCycleState(behaviour, StateToCheck.Enable);
+            }
+            return behaviour;
+        }
+
+        private GlobalBehaviour CreateInstanceByTypeInfo(in TypeInfo typeInfo)
+        {
             try
             {
-                behaviour = CreateInstanceByTypeInfo(typeInfo);
+                GlobalBehaviour behaviour;
+                if (OverrideCreateInstanceCallback != null)
+                {
+                    behaviour = OverrideCreateInstanceCallback(typeInfo);
+                }
+                else
+                {
+                    behaviour = Activator.CreateInstance(typeInfo.Value, true) as GlobalBehaviour;
+                }
                 if (behaviour == null)
                 {
                     if (Utility.AllowLogError)
                     {
-                        Utility.LogError($"Create GlobalBehaviour of type '{type}' faild.");
+                        Utility.LogError($"Create a null value of type '{typeInfo.Value}'.");
                     }
                     return null;
                 }
-                m_Collection.Add(behaviour);
-                behaviour.InternalAwake();
-                CheckLifeCycleState(behaviour, StateToCheck.Enable);
+                behaviour.typeHashCode = typeInfo.TypeHashCode;
+                behaviour.isExecuteInEditorMode = typeInfo.isExecuteInEditorMode;
+                return behaviour;
             }
             catch (Exception e)
             {
@@ -521,23 +529,6 @@ namespace E
                 }
                 return null;
             }
-            return behaviour;
-        }
-
-        private GlobalBehaviour CreateInstanceByTypeInfo(in TypeInfo typeInfo)
-        {
-            GlobalBehaviour behaviour;
-            if (OverrideCreateInstanceCallback != null)
-            {
-                behaviour = OverrideCreateInstanceCallback(typeInfo);
-            }
-            else
-            {
-                behaviour = Activator.CreateInstance(typeInfo.Value, true) as GlobalBehaviour;
-            }
-            behaviour.typeHashCode = typeInfo.TypeHashCode;
-            behaviour.isExecuteInEditorMode = typeInfo.isExecuteInEditorMode;
-            return behaviour;
         }
 
         private T InternalGetInstance<T>() where T : GlobalBehaviour
@@ -569,17 +560,9 @@ namespace E
         private void InternalDestroyInstance(in GlobalBehaviour behaviour)
         {
             if (!GetTypeInfo(behaviour.typeHashCode, out TypeInfo _)) return;
-            try
+            if (behaviour.InternalDestroy())
             {
-                behaviour.InternalDestroy();
                 m_Collection.Remove(behaviour);
-            }
-            catch (Exception e)
-            {
-                if (Utility.AllowLogError)
-                {
-                    Utility.LogException(e);
-                }
             }
         }
 
@@ -639,6 +622,11 @@ namespace E
             double seconds = m_Stopwatch.Elapsed.TotalSeconds;
             if (seconds - m_LastTime >= DeltaTime)
             {
+                if(m_LastTime == 0)
+                {
+                    //first frame.
+                    AutoCreateInstances();
+                }
                 m_LastTime = seconds;
                 ClearLifeCycleQueues();
                 CheckAllLifeCycleState();
@@ -697,19 +685,8 @@ namespace E
             {
                 int id = m_EnableQueue[index];
                 GlobalBehaviour behaviour = m_Collection[id];
-                if (behaviour != null)
+                if (behaviour != null && behaviour.InternalEnable())
                 {
-                    try
-                    {
-                        behaviour.InternalEnable();
-                    }
-                    catch (Exception e)
-                    {
-                        if (Utility.AllowLogError)
-                        {
-                            Utility.LogException(e);
-                        }
-                    }
                     CheckLifeCycleState(behaviour, StateToCheck.UpdateAndDisable);
                 }
                 index++;
@@ -723,19 +700,8 @@ namespace E
             {
                 int id = m_UpdateQueue[index];
                 GlobalBehaviour behaviour = m_Collection[id];
-                if (behaviour != null)
+                if (behaviour != null && behaviour.InternalUpdate())
                 {
-                    try
-                    {
-                        behaviour.InternalUpdate();
-                    }
-                    catch (Exception e)
-                    {
-                        if (Utility.AllowLogError)
-                        {
-                            Utility.LogException(e);
-                        }
-                    }
                     CheckLifeCycleState(behaviour, StateToCheck.Disable);
                 }
                 index++;
@@ -749,20 +715,7 @@ namespace E
             {
                 int id = m_DisableQueue[index];
                 GlobalBehaviour behaviour = m_Collection[id];
-                if (behaviour != null)
-                {
-                    try
-                    {
-                        behaviour.InternalDisable();
-                    }
-                    catch (Exception e)
-                    {
-                        if (Utility.AllowLogError)
-                        {
-                            Utility.LogException(e);
-                        }
-                    }
-                }
+                behaviour?.InternalDisable();
                 index++;
             }
         }

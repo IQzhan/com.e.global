@@ -126,9 +126,9 @@
         /// </summary>
         protected virtual void OnDestroy() { }
 
-        internal void InternalAwake()
+        internal bool InternalAwake()
         {
-            if (!(Utility.IsPlaying || IsExecuteInEditorMode)) return;
+            if (!(Utility.IsPlaying || IsExecuteInEditorMode)) return false;
             if (m_State == State.None)
             {
                 m_State = State.OnAwake;
@@ -137,16 +137,21 @@
                     OnAwake();
                     if (m_State == State.OnAwake)
                         m_State = State.Awaked;
+                    return true;
                 }
                 catch (System.Exception e)
                 {
                     m_State = State.None;
-                    throw e;
+                    if (Utility.AllowLogError)
+                    {
+                        Utility.LogException(e);
+                    }
                 }
             }
+            return false;
         }
 
-        internal void InternalEnable()
+        internal bool InternalEnable()
         {
             switch (m_State)
             {
@@ -161,18 +166,23 @@
                             OnEnable();
                             if (m_State == State.OnEnable)
                                 m_State = State.Enabled;
+                            return true;
                         }
                     }
                     catch (System.Exception e)
                     {
                         m_State = temp;
-                        throw e;
+                        if (Utility.AllowLogError)
+                        {
+                            Utility.LogException(e);
+                        }
                     }
                     break;
             }
+            return false;
         }
 
-        internal void InternalUpdate()
+        internal bool InternalUpdate()
         {
             switch (m_State)
             {
@@ -187,18 +197,23 @@
                             OnUpdate();
                             if (m_State == State.OnUpdate)
                                 m_State = State.Updated;
+                            return true;
                         }
                     }
                     catch (System.Exception e)
                     {
                         m_State = temp;
-                        throw e;
+                        if (Utility.AllowLogError)
+                        {
+                            Utility.LogException(e);
+                        }
                     }
                     break;
             }
+            return false;
         }
 
-        internal void InternalDisable()
+        internal bool InternalDisable()
         {
             switch (m_State)
             {
@@ -213,20 +228,25 @@
                             OnDisable();
                             if (m_State == State.OnDisable)
                                 m_State = State.Disabled;
+                            return true;
                         }
                     }
                     catch (System.Exception e)
                     {
                         m_State = temp;
-                        throw e;
+                        if (Utility.AllowLogError)
+                        {
+                            Utility.LogException(e);
+                        }
                     }
                     break;
             }
+            return false;
         }
 
-        internal void InternalDestroy()
+        internal bool InternalDestroy()
         {
-            if (m_State < State.OnAwake) return;
+            if (m_State < State.OnAwake) return false;
             State temp = m_State;
             if (m_State < State.OnDisable)
             {
@@ -238,7 +258,11 @@
                 catch (System.Exception e)
                 {
                     m_State = temp;
-                    throw e;
+                    if (Utility.AllowLogError)
+                    {
+                        Utility.LogException(e);
+                    }
+                    return false;
                 }
             }
             try
@@ -246,11 +270,16 @@
                 m_State = State.OnDestroy;
                 OnDestroy();
                 m_State = State.Destroyed;
+                return true;
             }
             catch (System.Exception e)
             {
                 m_State = temp;
-                throw e;
+                if (Utility.AllowLogError)
+                {
+                    Utility.LogException(e);
+                }
+                return false;
             }
         }
 
