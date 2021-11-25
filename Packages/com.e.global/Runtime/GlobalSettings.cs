@@ -2,6 +2,9 @@ using UnityEngine;
 
 namespace E
 {
+    /// <summary>
+    /// Settings of global system.
+    /// </summary>
     public class GlobalSettings : ScriptableObject
     {
         public enum UpdateMethod
@@ -31,7 +34,7 @@ namespace E
         /// <summary>
         /// Update delta time.
         /// </summary>
-        public static float DeltaTime { get => Instance.m_DeltaTime; set => Instance.m_DeltaTime = value; }
+        public static double DeltaTime { get => Instance.m_DeltaTime; set => Instance.m_DeltaTime = value; }
 
         /// <summary>
         /// Use which method to update.
@@ -43,7 +46,7 @@ namespace E
         public static bool AllowLogError { get => Instance.m_AllowLogError; set => Instance.m_AllowLogError = value; }
 
         [SerializeField, Min(0.001f)]
-        private float m_DeltaTime = 1f / 130f;
+        private double m_DeltaTime = 1f / 130f;
 
         [SerializeField]
         private UpdateMethod m_Method = UpdateMethod.Update;
