@@ -1,5 +1,4 @@
 ﻿using UnityEngine;
-using static E.BehaviourManager;
 
 namespace E
 {
@@ -8,29 +7,30 @@ namespace E
     {
         protected override bool IsActive => true;
 
-        private GameObject obj;
-
         private Transform trans;
 
         protected override void OnAwake()
         {
-            obj = GameObject.Find("Cube");
+            GameObject obj = GameObject.Find("Cube");
+            Debug.Log($"Cube {obj != null}");
+            if (obj == null) return;
             trans = obj.transform;
-            Debug.Log($"Cube: {trans.position}");
         }
 
         protected override void OnUpdate()
         {
+            if (trans == null) return;
             Vector3 a = new Vector3(1, 0, 0);
             Vector3 b = new Vector3(-1, 0, 0);
-            float t = 0.5f * Mathf.Sin(Time.time) + 0.5f;
+            float t = (float)(0.5d * System.Math.Sin(GlobalTime.Time) + 0.5d);
             Vector3 pos = a * (1 - t) + b * t;
             trans.position = pos;
+
         }
 
         protected override void OnDestroy()
         {
-            
+
         }
     }
 }
