@@ -9,14 +9,6 @@ namespace E
 {
     internal static class Utility
     {
-        private static int m_GlobalIDOrder = 0;
-
-        internal static unsafe uint UniqueRuntimeGlobalID()
-        {
-            Interlocked.Add(ref m_GlobalIDOrder, 1);
-            return (uint)m_GlobalIDOrder;
-        }
-
 #if UNITY_EDITOR
         public static void CreateAssetIfNotExists<T>() where T : ScriptableObject
         {

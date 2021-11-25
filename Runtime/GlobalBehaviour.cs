@@ -2,7 +2,7 @@
 {
     /// <summary>
     /// Simulate <see cref="UnityEngine.MonoBehaviour"/>'s life circle,
-    /// all <see cref="GlobalBehaviour"/>s are in one single <see cref="BehaviourUpdater"/>.
+    /// all <see cref="GlobalBehaviour"/>s are in one single <see cref="GlobalUpdater"/>.
     /// <para>See also:
     /// <seealso cref="BehaviourManager"/>,
     /// <seealso cref="TypeInfo"/>,
