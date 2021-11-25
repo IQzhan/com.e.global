@@ -3,7 +3,7 @@
 namespace E
 {
     /// <summary>
-    /// Update GlobalBehaviours at runtime,
+    /// Update global system at runtime,
     /// do not delete this gameobject.
     /// </summary>
     // Update in editor mode.
@@ -12,24 +12,27 @@ namespace E
     [AddComponentMenu("")]
     // Make sure only one updater.
     [Singleton(
-        Name = "[Behaviour Updater]",
+        Name = "[Global Updater]",
         Persistent = true,
         HideFlags = HideFlags.HideInInspector)]
-    public sealed partial class BehaviourUpdater : Singleton<BehaviourUpdater>
+    public sealed partial class GlobalUpdater : Singleton<GlobalUpdater>
     {
         private void FixedUpdate()
         {
-            BehaviourManager.instance.FixedUpdate();
+            bool allowUpdate = GlobalTime.instance.FixedUpdate();
+            BehaviourManager.instance.FixedUpdate(allowUpdate);
         }
 
         private void Update()
         {
-            BehaviourManager.instance.Update();
+            bool allowUpdate = GlobalTime.instance.Update();
+            BehaviourManager.instance.Update(allowUpdate);
         }
 
         private void LateUpdate()
         {
-            BehaviourManager.instance.LateUpdate();
+            bool allowUpdate = GlobalTime.instance.LateUpdate();
+            BehaviourManager.instance.LateUpdate(allowUpdate);
         }
 
 #if UNITY_EDITOR
