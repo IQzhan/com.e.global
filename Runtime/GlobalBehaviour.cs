@@ -13,67 +13,6 @@
     public abstract partial class GlobalBehaviour
     {
         /// <summary>
-        /// Life state of GlobalBehaviour
-        /// </summary>
-        public enum State
-        {
-            /// <summary>
-            /// None -> Awaked
-            /// </summary>
-            None = 0,
-
-            /// <summary>
-            /// Invoking OnAwake
-            /// </summary>
-            OnAwake = 1,
-
-            /// <summary>
-            /// Awaked -> Enabled or Destroyed
-            /// </summary>
-            Awaked = 2,
-
-            /// <summary>
-            /// Invoking OnEnable
-            /// </summary>
-            OnEnable = 3,
-
-            /// <summary>
-            /// Enabled -> Updated or Disabled or (Disabled and Destroyed)
-            /// </summary>
-            Enabled = 4,
-
-            /// <summary>
-            /// Invoking OnUpdate
-            /// </summary>
-            OnUpdate = 5,
-
-            /// <summary>
-            /// Updated -> Disabled or (Disabled and Destroyed)
-            /// </summary>
-            Updated = 6,
-
-            /// <summary>
-            /// Invoking OnDisable
-            /// </summary>
-            OnDisable = 7,
-
-            /// <summary>
-            /// Disabled -> Enabled or Destroyed
-            /// </summary>
-            Disabled = 8,
-
-            /// <summary>
-            /// Invoking OnDestroy
-            /// </summary>
-            OnDestroy = -1,
-
-            /// <summary>
-            /// Destroyed
-            /// </summary>
-            Destroyed = -2
-        }
-
-        /// <summary>
         /// Only runtime id, do not save it.
         /// </summary>
         public int ID => id;
@@ -81,7 +20,7 @@
         /// <summary>
         /// Life state of GlobalBehaviour
         /// </summary>
-        public State LifeState => m_State;
+        public GlobalBehaviourState LifeState => m_State;
 
         /// <summary>
         /// See <see cref="TypeInfo.isExecuteInEditorMode"/>
@@ -94,7 +33,7 @@
 
         internal bool isExecuteInEditorMode = false;
 
-        private State m_State = State.None;
+        private GlobalBehaviourState m_State = GlobalBehaviourState.None;
 
         /// <summary>
         /// Control enable state.
@@ -129,19 +68,19 @@
         internal bool InternalAwake()
         {
             if (!(Utility.IsPlaying || IsExecuteInEditorMode)) return false;
-            if (m_State == State.None)
+            if (m_State == GlobalBehaviourState.None)
             {
-                m_State = State.OnAwake;
+                m_State = GlobalBehaviourState.OnAwake;
                 try
                 {
                     OnAwake();
-                    if (m_State == State.OnAwake)
-                        m_State = State.Awaked;
+                    if (m_State == GlobalBehaviourState.OnAwake)
+                        m_State = GlobalBehaviourState.Awaked;
                     return true;
                 }
                 catch (System.Exception e)
                 {
-                    m_State = State.None;
+                    m_State = GlobalBehaviourState.None;
                     if (Utility.AllowLogError)
                     {
                         Utility.LogException(e);
@@ -155,17 +94,17 @@
         {
             switch (m_State)
             {
-                case State.Awaked:
-                case State.Disabled:
-                    State temp = m_State;
+                case GlobalBehaviourState.Awaked:
+                case GlobalBehaviourState.Disabled:
+                    GlobalBehaviourState temp = m_State;
                     try
                     {
                         if (IsActive)
                         {
-                            m_State = State.OnEnable;
+                            m_State = GlobalBehaviourState.OnEnable;
                             OnEnable();
-                            if (m_State == State.OnEnable)
-                                m_State = State.Enabled;
+                            if (m_State == GlobalBehaviourState.OnEnable)
+                                m_State = GlobalBehaviourState.Enabled;
                             return true;
                         }
                     }
@@ -186,17 +125,17 @@
         {
             switch (m_State)
             {
-                case State.Enabled:
-                case State.Updated:
-                    State temp = m_State;
+                case GlobalBehaviourState.Enabled:
+                case GlobalBehaviourState.Updated:
+                    GlobalBehaviourState temp = m_State;
                     try
                     {
                         if (IsActive)
                         {
-                            m_State = State.OnUpdate;
+                            m_State = GlobalBehaviourState.OnUpdate;
                             OnUpdate();
-                            if (m_State == State.OnUpdate)
-                                m_State = State.Updated;
+                            if (m_State == GlobalBehaviourState.OnUpdate)
+                                m_State = GlobalBehaviourState.Updated;
                             return true;
                         }
                     }
@@ -217,17 +156,17 @@
         {
             switch (m_State)
             {
-                case State.Enabled:
-                case State.Updated:
-                    State temp = m_State;
+                case GlobalBehaviourState.Enabled:
+                case GlobalBehaviourState.Updated:
+                    GlobalBehaviourState temp = m_State;
                     try
                     {
                         if (!IsActive)
                         {
-                            m_State = State.OnDisable;
+                            m_State = GlobalBehaviourState.OnDisable;
                             OnDisable();
-                            if (m_State == State.OnDisable)
-                                m_State = State.Disabled;
+                            if (m_State == GlobalBehaviourState.OnDisable)
+                                m_State = GlobalBehaviourState.Disabled;
                             return true;
                         }
                     }
@@ -246,13 +185,13 @@
 
         internal bool InternalDestroy()
         {
-            if (m_State < State.OnAwake) return false;
-            State temp = m_State;
-            if (m_State < State.OnDisable)
+            if (m_State < GlobalBehaviourState.OnAwake) return false;
+            GlobalBehaviourState temp = m_State;
+            if (m_State < GlobalBehaviourState.OnDisable)
             {
                 try
                 {
-                    m_State = State.OnDisable;
+                    m_State = GlobalBehaviourState.OnDisable;
                     OnDisable();
                 }
                 catch (System.Exception e)
@@ -267,9 +206,9 @@
             }
             try
             {
-                m_State = State.OnDestroy;
+                m_State = GlobalBehaviourState.OnDestroy;
                 OnDestroy();
-                m_State = State.Destroyed;
+                m_State = GlobalBehaviourState.Destroyed;
                 return true;
             }
             catch (System.Exception e)
@@ -287,8 +226,8 @@
         {
             switch (m_State)
             {
-                case State.Awaked:
-                case State.Disabled:
+                case GlobalBehaviourState.Awaked:
+                case GlobalBehaviourState.Disabled:
                     return IsActive;
             }
             return false;
@@ -298,8 +237,8 @@
         {
             switch (m_State)
             {
-                case State.Enabled:
-                case State.Updated:
+                case GlobalBehaviourState.Enabled:
+                case GlobalBehaviourState.Updated:
                     return IsActive;
             }
             return false;
@@ -309,8 +248,8 @@
         {
             switch (m_State)
             {
-                case State.Enabled:
-                case State.Updated:
+                case GlobalBehaviourState.Enabled:
+                case GlobalBehaviourState.Updated:
                     return !IsActive;
             }
             return false;
