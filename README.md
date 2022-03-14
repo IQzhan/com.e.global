@@ -1,8 +1,8 @@
-# Global module
+# Global behaviour module
 ### Descript
-Simulate monobehaviour's methods like 'Awake/OnEnable/Update/OnDisable/OnDestroy',and some other tools.
+Simulate monobehaviour's methods like 'Awake/OnEnable/Update/OnDisable/OnDestroy'.
 ### Usage
 See Assets/Example and source code.
 ### Install
 1. Window -> PackageManager -> + -> Add package from git URL.
-2. Enter git://github.com/IQzhan/com.e.global.git#v1.1.0 and click Add.
+2. Enter git://github.com/IQzhan/com.e.global.git#v1.1.1 and click Add.

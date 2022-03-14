@@ -7,7 +7,7 @@
       "dependencies": {}
     },
     "com.unity.collab-proxy": {
-      "version": "1.13.5",
+      "version": "1.15.7",
       "depth": 0,
       "source": "registry",
       "dependencies": {
@@ -31,7 +31,7 @@
       "url": "https://packages.unity.cn"
     },
     "com.unity.ide.rider": {
-      "version": "3.0.7",
+      "version": "3.0.9",
       "depth": 0,
       "source": "registry",
       "dependencies": {
@@ -127,17 +127,12 @@
       }
     },
     "com.unity.visualscripting": {
-      "version": "1.6.1",
+      "version": "1.7.6",
       "depth": 0,
       "source": "registry",
       "dependencies": {
         "com.unity.ugui": "1.0.0",
-        "com.unity.modules.ai": "1.0.0",
-        "com.unity.modules.animation": "1.0.0",
-        "com.unity.modules.jsonserialize": "1.0.0",
-        "com.unity.modules.particlesystem": "1.0.0",
-        "com.unity.modules.physics": "1.0.0",
-        "com.unity.modules.physics2d": "1.0.0"
+        "com.unity.modules.jsonserialize": "1.0.0"
       },
       "url": "https://packages.unity.cn"
     },

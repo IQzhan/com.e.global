@@ -26,8 +26,10 @@ namespace E
                 {
                     AssetDatabase.CreateFolder($"{assetsFolderStr}/{settingsFolderStr}", resourcesStr);
                 }
-                Editor.ScriptableObjectAssetsCreator.
-                    CreateScriptableObjectAsset<T>($"{assetsFolderStr}/{settingsFolderStr}/{resourcesStr}/{typeof(T).Name}.asset");
+                ScriptableObject scriptObj = ScriptableObject.CreateInstance<T>();
+                AssetDatabase.CreateAsset(scriptObj, $"{assetsFolderStr}/{settingsFolderStr}/{resourcesStr}/{typeof(T).Name}.asset");
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
             }
         }
 #endif
